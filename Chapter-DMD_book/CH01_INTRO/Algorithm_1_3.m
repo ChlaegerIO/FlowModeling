@@ -6,10 +6,11 @@ X2 = X(:, 2:end);
 r = 2; % rank truncation
 
 %% calculate DMD
-[Phi,omega,lambda,b,X_dmd] = DMD(X1,X2,r,dt);
-X_dmd(:,200) = 0;
+[Phi,omega,lambda,b,X_dmd,time_dynamics] = DMD(X1,X2,r,dt);
+X_dmd(:,end+1) = X_dmd(:,end);           % to be able to display later
+time_dynamics(:, end+1) = time_dynamics(:end);
 
-
+%% plot approximated function through DMD
 subplot(2,2,4); 
 surfl(real(X_dmd')); 
 shading interp; colormap("copper"); view(-20,60);
@@ -20,8 +21,9 @@ set(gca, 'Xticklabel',{'-10', '0', '10'});
 title('f with DMD');
 xlabel('x');
 ylabel('t');
-
+set(gca, 'FontSize', 14)
 set(gcf, 'Color', 'w', 'Position', [400 400 600 400]);
 set(gcf, 'PaperUnits', 'inches', 'PaperPosition', [10 10 16 12], 'PaperPositionMode', 'manual');
-print('-djpeg', '-loose', ['figures/' sprintf('dmd_intro4.jpeg')]);
+% change figure title for different figures
+print('-djpeg', '-loose', ['figures/' sprintf('dmd_intro1.jpeg')]);
 

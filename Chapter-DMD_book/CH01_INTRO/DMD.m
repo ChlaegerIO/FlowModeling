@@ -1,4 +1,4 @@
-function [Phi,omega,lambda,b,Xdmd] = DMD(X1,X2,r,dt)
+function [Phi,omega,lambda,b,Xdmd,time_dynamics] = DMD(X1,X2,r,dt)
 % function [Phi,omega,lambda,b,Xdmd] = DMD(X1,X2,r,dt)
 % Computes the Dynamic Mode Decomposition of X1, X2
 %
