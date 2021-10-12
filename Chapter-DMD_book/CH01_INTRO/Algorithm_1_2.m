@@ -7,11 +7,13 @@ dt = t(2) - t(1);
 [Xgrid,T] = meshgrid(xi,t);
 
 %% Create two spatio-temporal patterns
-f1 = sech(Xgrid+3).*(1*exp(1j*2.3*T));
-f2 = (sech(Xgrid).*tanh(Xgrid)).*(2*exp(1j*2.8*T));
-% f2 = 0.5.*(sech(Xgrid + 5)).*(exp(1j*2.3*T)).*(tanh(T-pi)-tanh(T-3*pi));
-% f2 = sech(Xgrid + 6 - T).*exp(1j*2.8*T);
-% f2 = sech(0.2*T).*sech(0.9*Xgrid+7-T).*sqrt(Xgrid).*sqrt(T).*exp(1j*2.8*T);
+f1 = sech(Xgrid+3).*(1*exp(1j*2.3*T));                      % standard
+% f1 = sech(Xgrid + 6 - T).*exp(1j*2.3*T);                    % for translation
+% f1 = 0.5.*(sech(Xgrid + 5)).*(exp(1j*2.3*T)).*(tanh(T-pi)-tanh(T-3*pi));
+                                                            % for transient behavior
+% f1 = sech(0.2*T).*sech(0.9*Xgrid+7-T).*sqrt(Xgrid).*sqrt(T).*exp(1j*2.8*T);
+                                                            % special case
+f2 = (sech(Xgrid).*tanh(Xgrid)).*(2*exp(1j*2.8*T));         % standard
 
 %% Combine signals and make data matrix
 f = f1 + f2;
@@ -22,7 +24,7 @@ figure, subplot(2,2,1);
 surfl(real(f1)); 
 shading interp; colormap("copper"); view(-20,60);
 set(gca, 'YTick', numel(t)/4 * (0:4)), 
-set(gca, 'Yticklabel',{'0','\pi','2\pi','3\pi','4\pi'});
+set(gca, 'Yticklabel',{'0','\pi','2\pi','3\pi',4*pi});
 set(gca, 'XTick', linspace(1,numel(xi),3)), 
 set(gca, 'Xticklabel',{'-10', '0', '10'});
 title('f1');

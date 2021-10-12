@@ -8,7 +8,7 @@ r = 2; % rank truncation
 %% calculate DMD
 [Phi,omega,lambda,b,X_dmd,time_dynamics] = DMD(X1,X2,r,dt);
 X_dmd(:,end+1) = X_dmd(:,end);           % to be able to display later
-time_dynamics(:, end+1) = time_dynamics(:end);
+time_dynamics(:, end+1) = time_dynamics(:,end);
 
 %% plot approximated function through DMD
 subplot(2,2,4); 
@@ -24,6 +24,6 @@ ylabel('t');
 set(gca, 'FontSize', 14)
 set(gcf, 'Color', 'w', 'Position', [400 400 600 400]);
 set(gcf, 'PaperUnits', 'inches', 'PaperPosition', [10 10 16 12], 'PaperPositionMode', 'manual');
-% change figure title for different figures
-print('-djpeg', '-loose', ['figures/' sprintf('dmd_intro1.jpeg')]);
+% print
+% print('-djpeg', '-loose', ['figures/' sprintf('dmd_intro4_r=50.jpeg')]);
 
