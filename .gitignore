@@ -1,4 +1,5 @@
 # ignore the video folder
 */Videos/
+*/Chapter-DMD_book/CH02_FLUIDS/DATA_FLUIDS/CYLINDER_ALL.mat
 # don't ignore the readme
 !*/Videos/readme.txt
