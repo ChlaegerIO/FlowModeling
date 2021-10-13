@@ -1,1 +1,0 @@
-The fog_above video was filmed from 12:19 - 12:47. The fog later disappeared after 15:30. 
