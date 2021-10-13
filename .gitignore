@@ -1,0 +1,4 @@
+# ignore the video folder
+*/Videos/
+# don't ignore the readme
+!*/Videos/readme.txt
