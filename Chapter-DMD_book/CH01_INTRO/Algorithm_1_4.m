@@ -113,6 +113,7 @@ set(gcf, 'PaperUnits', 'inches', 'PaperPosition', [10 10 16 12], 'PaperPositionM
 % print('-djpeg', '-loose', ['figures/' sprintf('dmd_pca_ica_comparision4_r=50.jpeg')]);
 
 %% predicting the future
+% how to include the transient behavior, with the V matrix?
 factor = 3;                              % factor to advance time
 until = factor*size(X1, 2);
 time_dynamics_pred = zeros(r, until);
