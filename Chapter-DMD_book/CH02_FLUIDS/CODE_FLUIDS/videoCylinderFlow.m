@@ -17,7 +17,7 @@ axis equal
 hold on
 
 % Initialize video
-myVideo = VideoWriter('figures/Cylinder_flow.mp4'); %open video file
+myVideo = VideoWriter('figures/Cylinder_flow'); %open video file
 myVideo.FrameRate = 10;  %can adjust this, 5 - 10 works well for me
 open(myVideo)
 
@@ -33,7 +33,7 @@ for i = 1:animation
     plot(x,y,'k','LineWidth',1.2) % cylinder boundary
     drawnow
 %     pause(0.01) %Pause and grab frame
-    F(i) = getframe(gcf);    
+    F(i) = getframe(gcf)
     writeVideo(myVideo, F(i));
 end
 

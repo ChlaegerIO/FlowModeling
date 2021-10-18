@@ -9,7 +9,7 @@ for k=1:size(X,2)
     Y(:,k+size(X,2)) = -xflip;
 end
 
-%% make a video of the cylinder flow
+%% make a video of the flow around the cylinder
 % videoCylinderFlow(X,size(X,2), nx, ny);
 
 %% compute mean and subtract
