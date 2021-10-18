@@ -28,5 +28,5 @@ fill(x,y,[.3 .3 .3])  % place cylinder
 plot(x,y,'k','LineWidth',1.2) % cylinder boundary
 
 set(gcf,'PaperPositionMode','auto') % 
-% print('-depsc2', '-loose', 'figures/cylinder'); % eps are vector images
+print('-depsc2', '-loose', 'figures/cylinder'); % eps are vector images
 % fix_lines('figures/cylinder.eps','figures/cylinder.eps') % fix dashed lines

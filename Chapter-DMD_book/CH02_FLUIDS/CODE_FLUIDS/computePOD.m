@@ -9,16 +9,25 @@ for k=1:size(X,2)
     Y(:,k+size(X,2)) = -xflip;
 end
 
-%% compute mean and subtract;
+%% make a video of the cylinder flow
+% videoCylinderFlow(X,size(X,2), nx, ny);
+
+%% compute mean and subtract
 VORTavg = mean(Y,2);
 f1 = plotCylinder(reshape(VORTavg,nx,ny),nx,ny);  % plot average wake
+print('-djpeg', '-loose', ['figures/' sprintf('averageWake1.jpeg')]);
 
 %% compute POD after subtracting mean (i.e., do PCA)
 [PSI,S,V] = svd(Y-VORTavg*ones(1,size(Y,2)),'econ');
 % PSI are POD modes
 figure
 semilogy(diag(S), 'x-', 'LineWidth',1.5); % plot singular vals
+print('-djpeg', '-loose', ['figures/' sprintf('singularvalues1.jpeg')]);
 
 for k=1:10  % plot first four POD modes
     f1 = plotCylinder(reshape(PSI(:,k),nx,ny),nx,ny);
 end
+
+% Create one graph with all together
+plotInOnePlot(14,'POD modes',3,12);
+print('-djpeg', '-loose', ['figures/' sprintf('POD-modes1.jpeg')]);
