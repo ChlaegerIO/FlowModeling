@@ -1,11 +1,5 @@
-# ignore the video folder
-Videos/Ac_lenticularis_timelapse_sunrise_short/*
-Videos/Ac_timelapse_night/*
-Videos/Cb_timelapse/*
-Videos/Ci_Cu_timelapse/*
-Videos/Cu_timelapse/*
-Videos/Sc_real_time/*
-Videos/St_fog_real_time/*
+# ignore all video files and a large database
+*.mp4
+*.mov
+*.avi
 /Chapter-DMD_book/CH02_FLUIDS/DATA_FLUIDS/CYLINDER_ALL.mat
-# don't ignore the readme
-!*/Videos/readme.txt
