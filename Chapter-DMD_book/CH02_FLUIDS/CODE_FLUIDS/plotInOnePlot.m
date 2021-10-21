@@ -26,25 +26,23 @@ for i = fig_first:fig_last
     possub  = get(ax(i),'Position');    
     if mod(i,2) == 0
         posnewh(1) = posnewh(1) + 0.2;
+        % how to set titles --> last time it was working, didn't remember
+        % how I made it, which_str works
+        if which_str == "DMD"
+            title("DMD mode " + round(i/2) + " real part");
+        elseif which_str == "POD"
+            title(sprintf('POD modes %d ', i));      
+        end
     else
-        posnewh(1) = posnewh(1) - 0.2   ;
+        posnewh(1) = posnewh(1) - 0.2;
+        if which_str == "DMD"
+            title("DMD mode " + round(i/2) + " imag part");
+        elseif which_str == "POD"
+            title('POD modes ');      
+        end
     end
-
 
     set(newh(1),'Position', [posnewh(1) possub(2) posnewh(3) possub(4)])
     delete(ax(i));
-    if which_str == "DMD"
-        if mod(i,2) == 0
-            title("DMD mode " + round(i/2) + " real part");
-        else
-            title("DMD mode " + round(i/2) + " imag part");
-        end
-    elseif which_str == "POD"
-        if mod(i,2) == 0
-            title(sprintf('POD modes %d ', i));       
-        else
-            title('POD mode ');
-        end
-    end
 end
 fig = figure(fig_nr)
