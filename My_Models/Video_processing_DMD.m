@@ -6,15 +6,15 @@ close all, clear all, clc
 nrOfFramesUsed = 130;
 
 % read video
-
 % ../Videos/St_fog_real_timelapse/fog_video_above_timelapse_10x.mov
+% ../Videos/St_fog_real_timelapse/fog_video_above_timelapse.mov
 % ../Videos/Ac_lenticularis_timelapse_sunrise_short/Ac_timelapse_sunrise.mp4
 % ../Videos/Ac_timelapse_night/Ac_timelapse_night.mp4
 % ../Videos/Cb_timelapse/Cb_timelapse.mov
 % ../Videos/Ci_Cu_timelapse/Ci_Cu_timelapse1.mp4
 % ../Videos/Cu_timelapse/Cu_timelapse_Trim.mp4
 % ../Videos/Sc_real_timelapse
-video = VideoReader('../Videos/Cu_timelapse/Cu_timelapse_Trim.mp4')
+video = VideoReader('../Videos/St_fog_real_timelapse/fog_video_above_timelapse.mov')
 % save video within gray frames and make datamatrix X
 row = video.Height*video.Width;
 X = zeros(row, nrOfFramesUsed);
@@ -31,13 +31,13 @@ X = X ./max(X(:));
 X = X ./1.2;               % darken image, especially highlights
 
 % print input video
-% videoOut_input = VideoWriter('figures/Cu_Video_Input','Grayscale AVI')
-% open(videoOut_input);
-% for i = 1:size(X,2)
-%     frame_gray = reshape(X(:,i),video.Height,video.Width);
-%     writeVideo(videoOut_input,frame_gray)
-% end
-% close(videoOut_input);
+videoOut_input = VideoWriter('figures/St_slower_Video_Input','Grayscale AVI')
+open(videoOut_input);
+for i = 1:size(X,2)
+    frame_gray = reshape(X(:,i),video.Height,video.Width);
+    writeVideo(videoOut_input,frame_gray);
+end
+close(videoOut_input);
 
 % free up space
 clear frame, clear frame_gray;
@@ -61,9 +61,9 @@ set(gca, 'FontSize', 14)
 set(gcf, 'Color', 'w', 'Position', [400 200 800 600]);
 set(gcf, 'PaperUnits', 'inches', 'PaperPosition', [10 10 16 12], 'PaperPositionMode', 'manual');
 % print
-% print('-djpeg', '-loose', ['figures/' sprintf('singularvalues_Cu_timelapse_Xin[0,1].jpeg')]);
+print('-djpeg', '-loose', ['figures/' sprintf('singularvalues_St_slower_timelapse.jpeg')]);
 
-r = 5;  % truncate at 21 modes, look at singular values
+r = 120;  % truncate at 21 modes, look at singular values
 U = U(:,1:r);
 S = S(1:r,1:r);
 V = V(:,1:r);
@@ -84,28 +84,44 @@ plot(cos(theta),sin(theta),'k--') % plot unit circle
 hold on, grid on
 scatter(real(diag(eigs)),imag(diag(eigs)),'ok')
 axis([-1.1 1.1 -1.1 1.1]);
-% print('-djpeg', '-loose', ['figures/' sprintf('eigenvalues_Cu_timelapse_r=5.jpeg')]);
+print('-djpeg', '-loose', ['figures/' sprintf('eigenvalues_St_slower_timelapse_r=120.jpeg')]);
 
 % free up space if necessary
 sizeOfX = size(X,2);
 clear lambda, clear U, clear X2, clear X, clear x;
 
+% could be improved with mrDMD!
+
 %% prediction
-factor = 2;                              % factor to advance time
+factor = 2;                             % factor to advance time
+dt = 1;                                 % tuning factor
 until = factor*sizeOfX;
 time_dynamics_pred = zeros(r, until);
-t = (0:until-1); % time vector
+t = (0:until-1)*dt;                     % time vector
 for iter = 1:until
     time_dynamics_pred(:,iter) = (b.*exp(omega*t(iter)));
 end
 X_dmd_pred = Phi * time_dynamics_pred;
 
+% if some values ar < 0 or > 1
+if min(X_dmd_pred(:)) < 0 || max(X_dmd_pred(:)) > 1
+    for i = 1:size(X_dmd_pred,1)
+        for j = 1:size(X_dmd_pred,2)
+            if real(X_dmd_pred(i,j)) < 0
+                X_dmd_pred(i,j) = 0;
+            elseif real(X_dmd_pred(i,j)) > 1
+                X_dmd_pred(i,j) = 1;
+            end
+        end
+    end
+end
+
 % recreate and make a prediction as a video
-videoOut = VideoWriter('figures/Cu_Video_prediction_out_factor2_r=5','Grayscale AVI')
+videoOut = VideoWriter('figures/St_slower_Video_prediction_out_factor2_r=120','Grayscale AVI')
 open(videoOut);
 for i = 1:size(X_dmd_pred,2)
-    frame_gray = reshape(real(X_dmd_pred(:,i)),video.Height,video.Width);
-    writeVideo(videoOut,frame_gray)
+    frame_gray_out = reshape(real(X_dmd_pred(:,i)),video.Height,video.Width);
+    writeVideo(videoOut,frame_gray_out)
 end
 close(videoOut);
 
