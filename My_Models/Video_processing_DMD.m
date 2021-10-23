@@ -61,6 +61,7 @@ lambda = diag(eigs); % discrete-time eigenvalues
 omega = log(lambda); % continuous-time eigenvalues
 x = X(:, 1);
 b = Phi\x;
+
 % plot singular values and Cumulative Energy
 figure('Name', 'Singular values'), subplot(1,2,1)
 semilogy(diag(S), 'x-', 'LineWidth',1.5), grid on
@@ -85,7 +86,7 @@ plot(cos(theta),sin(theta),'k--') % plot unit circle
 hold on, grid on
 scatter(real(diag(eigs)),imag(diag(eigs)),'ok')
 axis([-1.1 1.1 -1.1 1.1]);
-% print('-djpeg', '-loose', ['figures/' sprintf('eigenvalues_Cu_timelapse_r=129.jpeg')]);
+% print('-djpeg', '-loose', ['figures/' sprintf('eigenvalues_Cu_timelapse.jpeg')]);
 
 
 %% plot first 24 POD modes
