@@ -1,3 +1,5 @@
+close all, clear all;
+
 %% Define time and space discretizations
 n = 200;
 m = 80;
