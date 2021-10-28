@@ -5,10 +5,16 @@ close all, clear all, clc
 % used number of frames
 nrOfFramesUsed = 300;
 
-r = 297;                    % truncate at r, look at singular values
-factor = 2;                 % how long to predict the future
-dt = 1;                     % timesteps
+rr = 298;                   % rsvd rank
+q = 1;                      % rsvd power iteration
+p = 5;                      % rsvd oversampling parameter
 
+r = 298;                    % truncate at r, look at singular values
+factor = 2;                 % how long to predict the future
+dt = 1;                     % timesteps width
+fg_bg_epsilon = 1e-2;       % foreground background separation, omegas around +-epsilon of origin
+
+withBox = false;            % True: with the box filter, False: without
 %    ___________
 %   |           |
 % x |           |
@@ -59,59 +65,35 @@ while hasFrame(video) && ii <= nrOfFramesUsed
     ii = ii + 1;
 end
 
-% kind of a norm of X to [0,1]
-X = X - min(X(:));
-X = X ./max(X(:));
-X = X ./1.2;                % darken image, especially highlights
+X = matrixToNorm(X, 0.8);
 
-% % print input video, only do once
-% videoOut_input = VideoWriter('figures_v2/Cu_timelapse_Trim','Grayscale AVI')
-% open(videoOut_input);
-% for i = 1:size(X,2)
-%     frame_gray = reshape(X(:,i),nx,ny);
-%     writeVideo(videoOut_input,frame_gray);
-% end
-% close(videoOut_input);
+% print input video, only do once
+videoOut_input = VideoWriter('figures_v3/Cu_timelapse_Trim','Grayscale AVI')
+open(videoOut_input);
+for i = 1:size(X,2)
+    frame_gray = reshape(X(:,i),nx,ny);
+    writeVideo(videoOut_input,frame_gray);
+end
+close(videoOut_input);
 
-avgX = mean(X,2);           % compute average X in [0,1]
-X = X - avgX*ones(1,size(X,2));     % now between [-1,1]
-X = X - min(X(:));          % shift image again to [0,1]
-X = X ./max(X(:));
-X = X ./1.2;
-
-% % plot average picture
-% figure('Name', 'average image'), axes('Position',[0 0 1 1]), axis off
-% imagesc(reshape(avgX,nx,ny));
-% colormap gray               % color map
-% print('-djpeg', '-loose', ['figures_v2/' sprintf('Cu_timelapse_Trim_avgImage.jpeg')]);
-
-% % print input minus avg video
-% videoOut_input = VideoWriter('figures_v2/Cu_timelapse_Trim_minus_avg_Video_Input','Grayscale AVI')
-% open(videoOut_input);
-% for i = 1:size(X,2)
-%     frame_gray = reshape(X(:,i),nx,ny);
-%     writeVideo(videoOut_input,frame_gray);
-% end
-% close(videoOut_input);
-
-% filter for one cloud
-filter = zeros(size(X,1),1);
-for ii = 1:size(filter)
-    % in y direction
-    if ii >= (nx*cl1_posy) && ii <= nx*(cl1_posy + cl1_sizey)
-        % in x direction
-        if mod(ii,nx) >= cl1_posx && mod(ii,nx) <= (cl1_posx + cl1_sizex)
-            filter(ii) = 1;
+% filter for one cloud if desired
+if withBox == true
+    filter = zeros(size(X,1),1);
+    for ii = 1:size(filter)
+        % in y direction
+        if ii >= (nx*cl1_posy) && ii <= nx*(cl1_posy + cl1_sizey)
+            % in x direction
+            if mod(ii,nx) >= cl1_posx && mod(ii,nx) <= (cl1_posx + cl1_sizex)
+                filter(ii) = 1;
+            end
         end
     end
+    X = X.*(filter*ones(1,size(X,2)));
+    % figure;
+    % imagesc(reshape(X(:,1),nx,ny));
+    % colormap gray
+    % print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_window.jpeg')]);
 end
-
-X = X.*(filter*ones(1,size(X,2)));
-
-% figure;
-% imagesc(reshape(X(:,1),nx,ny));
-% colormap gray
-% print('-djpeg', '-loose', ['figures_v2/' sprintf('Cu_timelapse_Trim_window.jpeg')]);
 
 clear frame, clear frame_gray;  % free up space
 
@@ -120,8 +102,6 @@ X2 = X(:,2:end);
 X = X(:,1:end-1);
 
 % TODO: Koopman
-% TODO: only focus on one object at a time
-
 
 %%  Compute DMD
 [U,S,V] = svd(X,'econ');
@@ -133,9 +113,8 @@ Atilde = U'*X2*V*inv(S);
 Phi = X2*V*inv(S)*W;
 
 lambda = diag(eigs);            % discrete-time eigenvalues
-omega = log(lambda);            % continuous-time eigenvalues
+omega = log(lambda)/dt;         % continuous-time eigenvalues
 x1 = X(:, 1);
-b = Phi\x1;
 
 % % plot singular values and Cumulative Energy
 % figure('Name', 'Singular values'), subplot(1,2,1)
@@ -150,36 +129,50 @@ b = Phi\x1;
 % set(gca, 'FontSize', 14)
 % set(gcf, 'Color', 'w', 'Position', [400 200 800 600]);
 % set(gcf, 'PaperUnits', 'inches', 'PaperPosition', [10 10 16 12], 'PaperPositionMode', 'manual');
-% print('-djpeg', '-loose', ['figures_v2/' sprintf('Cu_timelapse_Trim_singularvalues_300frames.jpeg')]);
+% print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_singularvalues_300frames.jpeg')]);
 
-% %  Plot DMD spectrum
-% figure
-% set(gcf,'Position',[500 100 600 400])
-% theta = (0:1:100)*2*pi/100;
+%  Plot DMD spectrum
+figure
+set(gcf,'Position',[500 100 600 400])
+theta = (0:1:100)*2*pi/100;
 % plot(cos(theta),sin(theta),'k--')       % plot unit circle
-% hold on, grid on
-% scatter(real(diag(eigs)),imag(diag(eigs)),'ok')
-% axis([-1.1 1.1 -1.1 1.1]);
-% print('-djpeg', '-loose', ['figures_v2/' sprintf('Cu_timelapse_Trim_eigenvalues_300frames.jpeg')]);
+hold on, grid on
+scatter(real(omega),imag(omega),'ok')
+axis([-1.1 1.1 -1.1 1.1]);
+print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_omega_300frames.jpeg')]);
 
+%% separate foreground from background
+bg = find(abs(omega)<fg_bg_epsilon);
+fg = setdiff(1:r, bg);
 
-%% plot first 24 POD modes
-PODmodes = zeros(nx*6,ny*4);
-count = 1;
-for i=1:6
-    for j=1:4
-        PODmodes(1+(i-1)*nx:i*nx,1+(j-1)*ny:j*ny) = reshape(U(:,4*(i-1)+j),nx,ny);
-        count = count + 1;
-    end
-end
+omega_fg = omega(fg);           % foreground
+Phi_fg = Phi(:,fg);             % DMD foreground modes
+b_fg = Phi_fg\x1;
 
-figure, axes('position',[0  0  1  1]), axis off
-imagesc(PODmodes), colormap gray
-print('-djpeg', '-loose', ['figures_v2/' sprintf('Cu_timelapse_Trim_PODmodes_300frames.jpeg')]);
+omega_bg = omega(bg);           % background
+Phi_bg = Phi(:,bg);             % DMD background mode
+b_bg = Phi_bg\x1;
+
+% %% plot first picInX*picInY POD modes
+% picInX = 6;
+% picInY = 4;
+% PODmodes = zeros(nx*picInX,ny*picInY);
+% count = 1;
+% for i=1:picInX
+%     for j=1:picInY
+%         PODmodes(1+(i-1)*nx:i*nx,1+(j-1)*ny:j*ny) = reshape(real(Phi_fg(:,picInY*(i-1)+j)),nx,ny);
+%         count = count + 1;
+%     end
+% end
+% 
+% figure, axes('position',[0  0  1  1]), axis off
+% imagesc(PODmodes), colormap gray
+% print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_Phi_fg_modes_300frames.jpeg')]);
 
 % free up space if necessary
 sizeOfX = size(X,2);
-clear lambda, clear X2, clear x;
+clear lambda;
+% clear X2;
 % clear X; 
 % clear U
 
@@ -190,22 +183,27 @@ clear lambda, clear X2, clear x;
 until = factor*sizeOfX;
 time_dynamics_pred = zeros(r, until);
 t = (0:until-1)*dt;                     % time vector
-for iter = 1:until
-    time_dynamics_pred(:,iter) = (b.*exp(omega*t(iter)));
+
+% background prediction
+X_bg = zeros(numel(omega_bg), length(t));
+for tt = 1:length(t)
+    X_bg(:, tt) = b_bg .* exp(omega_bg.*t(tt));
 end
+X_bg = Phi_bg * X_bg;
 
-% %%
-% X_dmd_pred in [0,2] after added average
-X_dmd_pred = Phi * time_dynamics_pred;
-X_dmd_pred = X_dmd_pred + avgX*ones(1,size(time_dynamics_pred,2));
+% foreground prediction
+X_fg = zeros(numel(omega_fg), length(t));
+for tt = 1:length(t)
+    X_fg(:, tt) = b_fg .* exp(omega_fg.*t(tt));
+end
+X_fg = Phi_fg * X_fg;
 
-% shift image again to [0,1]
-X_dmd_pred = X_dmd_pred - min(X_dmd_pred(:));
-X_dmd_pred = X_dmd_pred ./max(X_dmd_pred(:));
-X_dmd_pred = X_dmd_pred ./1.2;
+X_dmd_pred = X_bg + X_fg;               % add both solutions together
+
+% X_dmd_pred = matrixToNorm(X_dmd_pred, 1.5);
 
 % if some values are < 0 or > 1
-% if min(X_dmd_pred(:)) < 0 || max(X_dmd_pred(:)) > 1
+if min(real(X_dmd_pred(:))) < 0 || max(real(X_dmd_pred(:))) > 1
     for i = 1:size(X_dmd_pred,1)
         for j = 1:size(X_dmd_pred,2)
             if real(X_dmd_pred(i,j)) < 0
@@ -215,10 +213,10 @@ X_dmd_pred = X_dmd_pred ./1.2;
             end
         end
     end
-% end
+end
 
 % recreate and make a prediction as a video
-videoOut = VideoWriter('figures_v2/Cu_timelapse_Trim_prediction_out_factor2_300frames_r=297','Grayscale AVI')
+videoOut = VideoWriter('figures_v3/Cu_timelapse_Trim_prediction_out_factor2_300frames_r=298','Grayscale AVI')
 open(videoOut);
 for i = 1:size(X_dmd_pred,2)
     frame_gray_out = reshape(real(X_dmd_pred(:,i)),nx,ny);
