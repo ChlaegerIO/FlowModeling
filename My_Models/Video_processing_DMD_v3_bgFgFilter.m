@@ -68,13 +68,13 @@ end
 X = matrixToNorm(X, 0.8);
 
 % print input video, only do once
-videoOut_input = VideoWriter('figures_v3/Cu_timelapse_Trim','Grayscale AVI')
-open(videoOut_input);
-for i = 1:size(X,2)
-    frame_gray = reshape(X(:,i),nx,ny);
-    writeVideo(videoOut_input,frame_gray);
-end
-close(videoOut_input);
+% videoOut_input = VideoWriter('figures_v3/Cu_timelapse_Trim','Grayscale AVI')
+% open(videoOut_input);
+% for i = 1:size(X,2)
+%     frame_gray = reshape(X(:,i),nx,ny);
+%     writeVideo(videoOut_input,frame_gray);
+% end
+% close(videoOut_input);
 
 % filter for one cloud if desired
 if withBox == true
@@ -89,10 +89,10 @@ if withBox == true
         end
     end
     X = X.*(filter*ones(1,size(X,2)));
-    % figure;
-    % imagesc(reshape(X(:,1),nx,ny));
-    % colormap gray
-    % print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_window.jpeg')]);
+    figure;
+    imagesc(reshape(X(:,1),nx,ny));
+    colormap gray
+    print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_window.jpeg')]);
 end
 
 clear frame, clear frame_gray;  % free up space
@@ -114,7 +114,7 @@ Phi = X2*V*inv(S)*W;
 
 lambda = diag(eigs);            % discrete-time eigenvalues
 omega = log(lambda)/dt;         % continuous-time eigenvalues
-x1 = X(:, 1);
+xlast = X(:, size(X,2));
 
 % % plot singular values and Cumulative Energy
 % figure('Name', 'Singular values'), subplot(1,2,1)
@@ -147,11 +147,11 @@ fg = setdiff(1:r, bg);
 
 omega_fg = omega(fg);           % foreground
 Phi_fg = Phi(:,fg);             % DMD foreground modes
-b_fg = Phi_fg\x1;
+b_fgLast = Phi_fg\xlast;
 
 omega_bg = omega(bg);           % background
 Phi_bg = Phi(:,bg);             % DMD background mode
-b_bg = Phi_bg\x1;
+b_bgLast = Phi_bg\xlast;
 
 % %% plot first picInX*picInY POD modes
 % picInX = 6;
@@ -179,7 +179,7 @@ clear lambda;
 % TODO: could be improved with mrDMD!
 
 
-%% video reconstruction and prediction
+%% video prediction
 until = factor*sizeOfX;
 time_dynamics_pred = zeros(r, until);
 t = (0:until-1)*dt;                     % time vector
@@ -187,24 +187,47 @@ t = (0:until-1)*dt;                     % time vector
 % background prediction
 X_bg = zeros(numel(omega_bg), length(t));
 for tt = 1:length(t)
-    X_bg(:, tt) = b_bg .* exp(omega_bg.*t(tt));
+    X_bg(:, tt) = b_bgLast .* exp(omega_bg.*t(tt));
 end
 X_bg = Phi_bg * X_bg;
+
+% % foreground recreation
+% X_fg = [X-abs(X_bg(:, 1:size(X,2)))];   % abs() nimmt auch im() Werte mit
+% R = zeros(size(X_bg,1), size(X_bg,2));
+% 
+% b_fgLast = Phi_fg\X(:,size(X,2));
+% 
+% for i = 1:size(X_fg,1)                  % add R to X_bg after
+%     for j = 1:size(X_fg,2)
+%         if (X_fg(i,j)) < 0
+%             R(i,j) = X_fg(i,j); 
+%             X_fg(i,j) = 0;
+%         end
+%     end
+% end
+% 
+% X_bg = X_bg + R;
 
 % foreground prediction
 X_fg = zeros(numel(omega_fg), length(t));
 for tt = 1:length(t)
-    X_fg(:, tt) = b_fg .* exp(omega_fg.*t(tt));
+    X_fg(:, tt) = b_fgLast .* exp(omega_fg.*t(tt));
 end
 X_fg = Phi_fg * X_fg;
 
+X_bg = matrixToNorm(X_bg, 0.5);
+X_fg = matrixToNorm(X_fg, 1);
+
 X_dmd_pred = X_bg + X_fg;               % add both solutions together
 
-% X_dmd_pred = matrixToNorm(X_dmd_pred, 1.5);
+X_dmd_pred = matrixToNorm(X_dmd_pred, 1);
 
 % if some values are < 0 or > 1
 if min(real(X_dmd_pred(:))) < 0 || max(real(X_dmd_pred(:))) > 1
     for i = 1:size(X_dmd_pred,1)
+        if (min(real(X_dmd_pred(i,:))) >= 0 && max(real(X_dmd_pred(i,:))) <= 1)
+            continue                    % skip this line
+        end
         for j = 1:size(X_dmd_pred,2)
             if real(X_dmd_pred(i,j)) < 0
                 X_dmd_pred(i,j) = 0;
@@ -216,7 +239,7 @@ if min(real(X_dmd_pred(:))) < 0 || max(real(X_dmd_pred(:))) > 1
 end
 
 % recreate and make a prediction as a video
-videoOut = VideoWriter('figures_v3/Cu_timelapse_Trim_prediction_out_factor2_300frames_r=298','Grayscale AVI')
+videoOut = VideoWriter('figures_v3/Cu_timelapse_Trim_factor2_300frames_r=298_bg_fg_only_prediction','Grayscale AVI')
 open(videoOut);
 for i = 1:size(X_dmd_pred,2)
     frame_gray_out = reshape(real(X_dmd_pred(:,i)),nx,ny);
