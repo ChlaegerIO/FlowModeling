@@ -17,7 +17,6 @@ polyorder = 3;
 Theta = poolData(x,n,polyorder);
 
 %% Build library and compute sparse regression
-Theta = poolData(x,n,3);  % up to third order polynomials
 lambda = 0.025;      % lambda is our sparsification knob.
 Xi = sparsifyDynamics(Theta,dx,lambda,n)
 poolDataLIST({'x','y','z'},Xi,n,polyorder);
