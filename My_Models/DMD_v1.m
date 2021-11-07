@@ -7,15 +7,14 @@ addpath 'C:\Users\timok\Documents\Git_bachelor\FlowModeling\My_Models\used_funct
 nrOfFramesUsed = 130;
 
 % read video
-% ../Videos/St_fog_real_timelapse/fog_video_above_timelapse_10x.mov
-% ../Videos/St_fog_real_timelapse/fog_video_above_timelapse.mov
-% ../Videos/Ac_lenticularis_timelapse_sunrise_short/Ac_timelapse_sunrise.mp4
-% ../Videos/Ac_timelapse_night/Ac_timelapse_night.mp4
-% ../Videos/Cb_timelapse/Cb_timelapse.mov
-% ../Videos/Ci_Cu_timelapse/Ci_Cu_timelapse1.mp4
-% ../Videos/Cu_timelapse/Cu_timelapse_Trim.mp4
-% ../Videos/Sc_real_timelapse
-video = VideoReader('../Videos/Cu_timelapse/Cu_timelapse_Trim.mp4')
+% ../Videos/St_fog/fog_video_above_timelapse_10x.mov
+% ../Videos/St_fog/fog_video_above_timelapse.mov
+% ../Videos/Ac/Ac_timelapse_sunrise.mp4
+% ../Videos/Ac_night/Ac_timelapse_night.mp4
+% ../Videos/Cb/Cb_timelapse.mov
+% ../Videos/Ci_Cu/Ci_Cu_timelapse1.mp4
+% ../Videos/Cu/Cu_timelapse_Trim.mp4
+video = VideoReader('../Videos/Cu/Cu_timelapse_Trim_low.mov')
 % save video within gray frames and make datamatrix X
 nx = video.Height;
 ny = video.Width;
@@ -31,7 +30,7 @@ end
 
 X = X - min(X(:));
 X = X ./max(X(:));
-X = X ./1.2;               % darken image, especially highlights
+% X = X ./1.2;               % darken image, especially highlights
 
 % print input video
 % videoOut_input = VideoWriter('figures/St_slower_Video_Input','Grayscale AVI')
@@ -50,7 +49,7 @@ X = X(:,1:end-1);
 
 %%  Compute DMD (Phi are eigenvectors)
 [U,S,V] = svd(X,'econ');
-r = 129;                    % truncate at 21 modes, look at singular values
+r = 40;
 U = U(:,1:r);
 S = S(1:r,1:r);
 V = V(:,1:r);   
@@ -91,23 +90,31 @@ axis([-1.1 1.1 -1.1 1.1]);
 
 
 %% plot first 24 POD modes
-PODmodes = zeros(nx*6,ny*4);
+PODmodes = zeros(nx*2,ny*3);
 count = 1;
-for i=1:6
-    for j=1:4
-        PODmodes(1+(i-1)*nx:i*nx,1+(j-1)*ny:j*ny) = reshape(U(:,4*(i-1)+j),nx,ny);
-        count = count + 1;
-    end
-end
+U1 = U - min(U(:));
+U1 = U1 ./max(U1(:));
+U1 = tanh(15.*U1-9)./2 + 0.5;       % makes contrast higher of POD modes     
+% for i=1:2
+%     for j=1:3
+%         if (i==1 && j==1)
+%             PODmodes(1+(i-1)*nx:i*nx,1+(j-1)*ny:j*ny) = reshape(X(:,70),nx,ny);
+%         else
+%             PODmodes(1+(i-1)*nx:i*nx,1+(j-1)*ny:j*ny) = reshape(U1(:,4*(i-1)+20*j),nx,ny);
+%         end
+%         count = count + 1;
+%     end
+% end
 
 figure, axes('position',[0  0  1  1]), axis off
 imagesc(PODmodes), colormap gray
-print('-djpeg', '-loose', ['figures/' sprintf('eigenvalues_Cu_timelapse_PODmodes.jpeg')]);
+% print('-djpeg', '-loose', ['figures_v1/' sprintf('POD_Cu_timelapse_PODmodes_small.jpeg')]);
 
 
 % free up space if necessary
 sizeOfX = size(X,2);
-clear lambda, clear X2, clear x;
+clear lambda, 
+%clear X2, clear x;
 % clear X; 
 % clear U
 
@@ -139,7 +146,7 @@ if min(X_dmd_pred(:)) < 0 || max(X_dmd_pred(:)) > 1
 end
 
 % recreate and make a prediction as a video
-videoOut = VideoWriter('figures/Cu_Video_prediction_out_factor2_r=129','Grayscale AVI')
+videoOut = VideoWriter('figures_v1/Cu_Video_prediction_out_factor2_r=40','Grayscale AVI')
 open(videoOut);
 for i = 1:size(X_dmd_pred,2)
     frame_gray_out = reshape(real(X_dmd_pred(:,i)),nx,ny);
