@@ -1,9 +1,9 @@
 clear all, close all, clc
-addpath('./utils');
+addpath '..\Data_DATA';
+
 load allFaces.mat
 X = faces(:,1:nfaces(1));
 [L,S] = RPCA(X);
-
 
 %%
 inds = [3 4 14 15 17 18 19 20 21 32 43];

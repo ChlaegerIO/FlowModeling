@@ -1,6 +1,5 @@
 clear all; close all; clc
 
-
 % A=randn(10,10,10);
 % model=parafac(A,3);
 % [A1,A2,A3]=fac2let(model)

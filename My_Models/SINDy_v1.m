@@ -38,7 +38,6 @@ X1_test = matrixToNorm(X1_test, 0.8);
 X1_train2 = X1_train(:, 2:101);
 X1_train1 = X1_train(:, 1:100);
 
-
 %% SINDy coordinates
 % TODO: subtract the mean
 % avgX1 = mean(X1_train1,2);           % compute average X
@@ -55,6 +54,8 @@ X1_train1 = X1_train(:, 1:100);
 % imagesc(reshape(X1_train1(:,1),video1.Height,video1.Width));
 % colormap gray                       % color map
 % print('-djpeg', '-loose', ['figures_SINDy_v1/' sprintf('Cu_timelapse_Trim_withoutAvgImage.jpeg')]);
+
+
 
 % do SVD and take r orthonormal POD coordinates
 [U1_1,S1_1,V1_1] = svd(X1_train1,'econ');
