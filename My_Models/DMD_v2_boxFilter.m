@@ -204,7 +204,7 @@ X_dmd_pred = Phi * time_dynamics_pred;
 X_dmd_pred = X_dmd_pred + avgX*ones(1,size(time_dynamics_pred,2));
 
 % shift image again to [0,1]
-X_dmd_pred = matrixToNorm(X_dmd_pred,1);
+X_dmd_pred = matrixToNorm(X_dmd_pred, 0,1);
 
 % if some values are < 0 or > 1
 if min(X_dmd_pred(:)) < 0 || max(X_dmd_pred(:)) > 1

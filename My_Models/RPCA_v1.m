@@ -41,7 +41,7 @@ while hasFrame(video) && ii <= nrOfFramesUsed
     ii = ii + 1;
 end
 
-X = matrixToNorm(X, 0.8);
+X = matrixToNorm(X, 0,0.8);
 
 clear frame, clear frame_gray;  % free up space
 

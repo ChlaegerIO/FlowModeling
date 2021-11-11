@@ -66,7 +66,7 @@ while hasFrame(video) && ii <= nrOfFramesUsed
     ii = ii + 1;
 end
 
-X = matrixToNorm(X, 0.8);
+X = matrixToNorm(X,0, 0.8);
 
 % print input video, only do once
 % videoOut_input = VideoWriter('figures_v3/Cu_timelapse_Trim','Grayscale AVI')
@@ -227,12 +227,12 @@ for kk = 1:length(k)
 end
 X_fg = Phi_fg * X_fg;
 
-X_bg = matrixToNorm(X_bg, 0.8);
-X_fg = matrixToNorm(X_fg, 1);
+X_bg = matrixToNorm(X_bg,0, 0.8);
+X_fg = matrixToNorm(X_fg,0, 1);
 
 X_dmd_pred = X_bg + X_fg;               % add both solutions together
 
-X_dmd_pred = matrixToNorm(X_dmd_pred, 1);
+X_dmd_pred = matrixToNorm(X_dmd_pred, 0, 1);
 
 % if some values are < 0 or > 1
 if min(real(X_dmd_pred(:))) < 0 || max(real(X_dmd_pred(:))) > 1

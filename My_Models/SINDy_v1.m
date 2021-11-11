@@ -31,8 +31,8 @@ split = 0.8;                        % split between the train and test data
 % [X2_train, X2_test, video2] = importVideo('../Videos/St_fog/fog_video_above_timelapse_10x_low.mov',0.8);
 % [X3_train, X3_test, video3] = importVideo('../Videos/Cb/Cb_timelapse_low.mov',0.8);
 
-X1_train = matrixToNorm(X1_train, 0.8);
-X1_test = matrixToNorm(X1_test, 0.8);
+X1_train = matrixToNorm(X1_train, 0, 0.8);
+X1_test = matrixToNorm(X1_test, 0, 0.8);
 % makeVideo('figures_SINDy_v1/Cu_timelapse_Trim', X1_train, video1.Height, video1.Width);
 
 X1_train2 = X1_train(:, 2:101);
@@ -42,7 +42,7 @@ X1_train1 = X1_train(:, 1:100);
 % TODO: subtract the mean
 % avgX1 = mean(X1_train1,2);           % compute average X
 % X1_train1 = X1_train1 - avgX1*ones(1,size(X1_train1,2));
-% X1_train1 = matrixToNorm(X1_train1, 0.8);
+% X1_train1 = matrixToNorm(X1_train1, 0,0.8);
 
 % % plot average picture
 % figure('Name', 'average image'), axes('Position',[0 0 1 1]), axis off
@@ -99,6 +99,6 @@ end
 
 % TODO: real prediction in a specific range
 X1_pred = U1_pred*S1_pred*V1_pred';
-X1_pred = matrixToNorm(X1_pred, 0.9);
+X1_pred = matrixToNorm(X1_pred, 0, 0.9);
 
 makeVideo('figures_SINDy_v1/St_fog_above_lambda0.5_startU1_2', X1_pred, video1.Height, video1.Width);
