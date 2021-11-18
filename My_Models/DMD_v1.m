@@ -49,7 +49,7 @@ X = X(:,1:end-1);
 
 %%  Compute DMD (Phi are eigenvectors)
 [U,S,V] = svd(X,'econ');
-r = 40;
+r = 128;
 U = U(:,1:r);
 S = S(1:r,1:r);
 V = V(:,1:r);   

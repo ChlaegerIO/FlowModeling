@@ -4,9 +4,9 @@ addpath 'C:\Users\timok\Documents\Git_bachelor\FlowModeling\My_Models\used_funct
 %% tuning parameters
 % ------------------------------------------------------------------------
 % used number of frames
-nrOfFramesUsed = 50;
+nrOfFramesUsed = 100;
 
-r = 49;                    % truncate at r, look at singular values
+r = 99;                    % truncate at r, look at singular values
 factor = 2;                 % how long to predict the future
 dt = 1;                     % timesteps
 
@@ -31,23 +31,15 @@ cl1_sizey = 220;
 %% input data/video processing
 % TODO: change to lower video quality
 % read video
-% ../Videos/St_fog_real_timelapse/fog_video_above_timelapse_10x.mov
-% ../Videos/St_fog_real_timelapse/fog_video_above_timelapse_10x_low.mov
-% ../Videos/St_fog_real_timelapse/fog_video_near_60x.mov
-% ../Videos/St_fog_real_timelapse/fog_video_near_60x_low.mov
-% ../Videos/Ac_lenticularis_timelapse_sunrise_short/Ac_timelapse_sunrise.mp4
-% ../Videos/Ac_lenticularis_timelapse_sunrise_short/Ac_timelapse_sunrise_low.mov
-% ../Videos/Ac_timelapse_night/Ac_timelapse_night.mp4
-% ../Videos/Ac_timelapse_night/Ac_timelapse_night_low.mov
-% ../Videos/Cb_timelapse/Cb_timelapse.mov
-% ../Videos/Cb_timelapse/Cb_timelapse_low.mov
-% ../Videos/Ci_Cu_timelapse/Ci_Cu_timelapse1.mp4
-% ../Videos/Ci_Cu_timelapse/Ci_Cu_timelapse1_low.mov
-% ../Videos/Cu_timelapse/Cu_timelapse_Trim.mp4
+% ../Videos/St_fog/fog_video_above_timelapse_10x_low.mov
+% ../Videos/St_fog/fog_video_near_60x_low.mov
+% ../Videos/Ac/Ac_timelapse_sunrise_low.mov
+% ../Videos/Ac_night/Ac_timelapse_night_low.mov
+% ../Videos/Cb/Cb_timelapse_low.mov
+% ../Videos/Ci_Cu/Ci_Cu_timelapse1_low.mov
 % ../Videos/Cu_timelapse/Cu_timelapse_Trim_low.mov
-% ../Videos/Sc_real_timelapse/sc_beneath_timelapse_150x.mov
-% ../Videos/Sc_real_timelapse/sc_beneath_timelapse_150x_low.mov
-video = VideoReader('../Videos/Cu_timelapse/Cu_timelapse_Trim_low.mov')
+% ../Videos/Sc/sc_beneath_timelapse_150x_low.mov
+video = VideoReader('../Videos/Cu/Cu_timelapse_Trim_low.mov')
 % nrOfFramesUsed = round(video.NumFrames - 1);
 nx = video.Height;
 ny = video.Width;
@@ -137,9 +129,7 @@ Phi = X2*V*inv(S)*W;
 lambda = diag(eigs);            % discrete-time eigenvalues
 omega = log(lambda)/dt;            % continuous-time eigenvalues
 x1 = X(:, 1);
-% b = Phi\x1;
-b = (W*eigs)^(-1)*U'*x1;         % better way of calculation b
-
+b = Phi\x1;
 
 % % plot singular values and Cumulative Energy
 % figure('Name', 'Singular values'), subplot(1,2,1)
@@ -220,7 +210,7 @@ if min(X_dmd_pred(:)) < 0 || max(X_dmd_pred(:)) > 1
 end
 
 % recreate and make a prediction as a video
-videoOut = VideoWriter('figures_v2/Cu_timelapse_Trim_prediction_out_factor2_50frames_r=744','Grayscale AVI')
+videoOut = VideoWriter('figures_v2/Cu_test_x1','Grayscale AVI')
 open(videoOut);
 for i = 1:size(X_dmd_pred,2)
     frame_gray_out = reshape(real(X_dmd_pred(:,i)),nx,ny);

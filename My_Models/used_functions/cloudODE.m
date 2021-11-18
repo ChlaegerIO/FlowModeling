@@ -1,4 +1,4 @@
-function dx = cloudODE(t,x,Xi,nVars,polyorder)
+function dx = cloudODE(t,x,Xi,nVars,polyorder,strWhat)
 %CLOUDODE Calculates the next step in the cloud ODE, vector with rank r
 %entries
 %   t: time
@@ -6,7 +6,11 @@ function dx = cloudODE(t,x,Xi,nVars,polyorder)
 %   Xi: sparse model of the states
 %   dx: next state of the ODE
 
-dx = buildTheta(x',nVars,polyorder)*Xi;
+if ~exist('strWhat','var')
+    strWhat = 'polynomial';
+end
+
+dx = buildTheta(x',nVars,polyorder,strWhat)*Xi;
 dx = dx';
 
 end
