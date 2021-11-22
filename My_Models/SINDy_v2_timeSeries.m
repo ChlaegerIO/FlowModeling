@@ -63,7 +63,7 @@ fprintf('regression done \n');
 until = 150;
 V1_pred = V1_1(1,:);
 for i = 1:until   
-    V1_pred = [V1_pred; buildTheta(V1_pred,r,1)*XiV];
+    V1_pred = [V1_pred; buildTheta(V1_pred(size(V1_pred,1),:),r,1)*XiV];
 end
 X_pred = U1_1*S1_1*V1_pred';
 
@@ -78,7 +78,7 @@ X_pred = U1_1*S1_1*V1_pred';
 % Vt_pred = Vt_pred(1:1/step:untilFrame/step,:);
 % 
 % X_pred = U1_1*S1_1*Vt_pred';
-% X_pred = matrixToNorm(X_pred, 0, 0.9);
+X_pred = matrixToNorm(X_pred, 0, 0.9);
 
 makeVideo('figures_SINDy_v2/St_fog_lambda0.99_pol1_pred1_1', X_pred, video.Height, video.Width);
 % save ('St_XiV_lam0.99_f100_r1.mat', 'XiV','-v7.3');

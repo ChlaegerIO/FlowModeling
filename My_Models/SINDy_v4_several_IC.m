@@ -3,7 +3,7 @@ addpath 'C:\Users\timok\Documents\Git_bachelor\FlowModeling\My_Models\used_funct
 
 %% tuning parameters
 % ------------------------------------------------------------------------
-lambda = 0.029;                     % sparsification knob for SINDy
+lambda = 0.1;                     % sparsification knob for SINDy
 split = 0.8;                        % split between the train and test data
 
 % ------------------------------------------------------------------------
@@ -127,19 +127,28 @@ for i=1:6
         text(20,0.25, sprintf('V %i', VNr))
     end
 end
-print('-djpeg', '-loose', ['figures_SINDy_v4/' sprintf('V_Cu_timeSeries_train17.jpeg')]);
+figure, set(gcf,'position',[110,70,1000,700])
+for i=1:6
+    for j=1:4
+        VNr = (i-1)*4+j;
+        subplot(6,4,VNr)
+        plot(V1_1(:,VNr)-V1_2(:,VNr))
+        text(20,0.25, sprintf('V %i', VNr))
+    end
+end
+% print('-djpeg', '-loose', ['figures_SINDy_v4/' sprintf('V_St_timeSeries_train17.jpeg')]);
 
 %% SINDy library - in time
 ThetaV = buildTheta(V1_1,r,1,'trigonometric');
 fprintf('library done \n');
 
 %% SINDy regression
-XiV = sparsifyDynamics(ThetaV,V1_2,lambda,1);
+XiV = sparsifyDynamics(ThetaV,V1_2,lambda,r);
 fprintf('regression done \n');
 
 %% prediction
 % prediction based on test set
-[Utest,Stest,Vtest] = svd(X2_test,'econ');
+[Utest,Stest,Vtest] = svd(X4_test,'econ');
 Utest = Utest(:,1:r);                     % truncate with rank r and get r coordinates
 Stest = Stest(1:r,1:r);
 Vtest = Vtest(:,1:r);
@@ -153,10 +162,12 @@ options = odeset('RelTol',1e-12,'AbsTol',1e-12*ones(1,size(Vtest,2)));
 [t,Vt_pred]=ode45(@(t,v) cloudODE(t,v,XiV,r,1,'trigonometric'),tspan_pred,v0_pred,options);
 Vt_pred = Vt_pred(1:1/step:untilFrame/step,:);
 
-Xt_pred = U1_2(1:size(X1_train,1),:)*S1_2*Vt_pred';
+Xt_pred = Utest*Stest*Vt_pred';
+avgX2 = mean(X4_test,2);           % compute average X
+Xt_pred = Xt_pred + 2*avgX2*ones(1,size(Xt_pred,2));
 Xt_pred = matrixToNorm(Xt_pred, 0, 0.9);
 
-makeVideo('figures_SINDy_v4/V1_2_train_pred_lambda0.029', Xt_pred, video1.Height, video1.Width);
+makeVideo('figures_SINDy_v4/St_pred_lambda0.1_sin_1x_test', Xt_pred, video1.Height, video1.Width);
 fprintf('video ouput done \n');
 
 %%
@@ -170,15 +181,11 @@ for i=1:6
         text(20,0.25, sprintf('V %i', VNr))
     end
 end
-print('-djpeg', '-loose', ['figures_SINDy_v4/' sprintf('V1_2_train_pred_Cu_timeSeries_train17_lambda0.029.jpeg')]);
+print('-djpeg', '-loose', ['figures_SINDy_v4/' sprintf('St_pred_train17_lambda0.1_sin.jpeg')]);
 
 figure, set(gcf,'position',[50,20,800,400])
-subplot(1,2,1)
 imagesc(real(XiV))
-subplot(1,2,2)
-imagesc(imag(XiV))
 
 % [EV, eig] = eig(XiV(1:r,:));
-% writematrix(eig,'XiV_eigenvalues_lam0.099.csv')
-writematrix(XiV,'XiV_lam0.029.csv')
-
+% writematrix(eig,'figures_SINDy_v4/XiV_eigenvalues_lam0.099.csv')
+% writematrix(XiV,'figures_SINDy_v4/XiV_lam0.029.csv')
