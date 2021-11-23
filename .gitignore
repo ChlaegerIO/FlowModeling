@@ -6,5 +6,5 @@
 *.mat
 
 # ignore folders
-My_Models/Neural_Network/
+My_Models/Neural_Network/Lib/
 Chapter_book/DataBook_python/Lib/
