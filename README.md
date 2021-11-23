@@ -6,3 +6,7 @@ In the folder `Chapter-DMD_book` is the extended code examples of the book: _Dyn
 In the folder `My_Models` is the code used to get the results for my Model
 
 In the folder `Videos` is a link to a video collection and some database files which are too large for my GitHub lfs storage capacity. 
+
+
+Notes on git:
+Discard commits by moving the head to the origin/main (in online repository) with `git reset HEAD~5` where 5 means 5 steps back.
