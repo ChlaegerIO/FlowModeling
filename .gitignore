@@ -4,3 +4,6 @@
 *.avi
 *.asv
 *.mat
+
+# ignore folders
+My_Models/Neural_Network/
