@@ -1,5 +1,11 @@
 clear all, close all, clc
 
+% filename = 'housing.data';
+% urlwrite('http://archive.ics.uci.edu/ml/machine-learning-databases/housing/housing.data',filename);
+% inputNames = {'CRIM','ZN','INDUS','CHAS','NOX','RM','AGE','DIS','RAD','TAX','PTRATIO','B','LSTAT'};
+% outputNames = {'MEDV'};
+% housingAttributes = [inputNames,outputNames];
+
 load housing.data
 
 b = housing(:,14);      % housing values in $1000s

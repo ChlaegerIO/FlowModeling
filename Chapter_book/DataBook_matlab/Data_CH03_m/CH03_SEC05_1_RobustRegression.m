@@ -31,4 +31,4 @@ axis([-2 2 -6 2])
 %%
 set(gcf,'Position',[100 100 600 400])
 set(gcf,'PaperPositionMode','auto')
-print('-depsc2', '-loose', '../figures/f_chCS_robustregression');
+print('-depsc2', '-loose', 'figures/f_chCS_robustregression');

@@ -20,9 +20,9 @@ xL1DeBiased = pinv(A(:,abs(xL1)>0))*b
 figure(1)
 set(gcf,'Position',[100 100 600 400])
 set(gcf,'PaperPositionMode','auto')
-print('-depsc2', '-loose', '../figures/f_chCS_ex07_lassoA');
+print('-depsc2', '-loose', 'figures/f_chCS_ex07_lassoA');
 
 figure(2)
 set(gcf,'Position',[100 100 600 400])
 set(gcf,'PaperPositionMode','auto')
-print('-depsc2', '-loose', '../figures/f_chCS_ex07_lassoB');
+print('-depsc2', '-loose', 'figures/f_chCS_ex07_lassoB');

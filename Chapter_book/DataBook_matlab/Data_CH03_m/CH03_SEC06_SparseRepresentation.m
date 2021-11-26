@@ -1,5 +1,5 @@
 clear all, close all, clc
-load ../../CH01_SVD/DATA/allFaces.mat
+load ../Data_DATA/allFaces.mat
 X = faces;
 %% Build Training and Test sets
 nTrain = 30;  nTest = 20;  nPeople = 20;

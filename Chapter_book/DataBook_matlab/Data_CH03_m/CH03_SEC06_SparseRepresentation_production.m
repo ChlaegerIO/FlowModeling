@@ -1,5 +1,5 @@
 clear all, close all, clc
-load ../../CH01_SVD/DATA/allFaces.mat
+load ../Data_DATA/allFaces.mat
 mustache = double(rgb2gray(imread('mustache.jpg'))/255);
 
 
@@ -72,7 +72,7 @@ for k=1:4
     axis off
     set(gcf,'Position',[100 100 168 192])
     set(gcf,'PaperPositionMode','auto')
-%     print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_bsmall',num2str(k)]);
+%     print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_bsmall',num2str(k)]);
 end
 
 %% L1 SEARCH, TESTCLEAN
@@ -89,7 +89,7 @@ figure
 plot(a1,'k')
 set(gcf,'Position',[100 100 300 200])
 set(gcf,'PaperPositionMode','auto')
-% print('-depsc2', '-loose', '../figures/f_chCS_ex06_SRCa1');
+% print('-depsc2', '-loose', 'figures/f_chCS_ex06_SRCa1');
 
 figure
 axes('position',[0  0  1  1])
@@ -97,14 +97,14 @@ imagesc(reshape(Training*(a1./scalingFactor'),n,m)), colormap gray
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b1L']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b1L']);
 
 imagesc(reshape(b1-(Training*(a1./scalingFactor')),n,m)), colormap gray
 caxis([0 255])
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b1S']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b1S']);
 
 figure
 binnedError = zeros(20,1);
@@ -119,7 +119,7 @@ box on
 xlim([0 21])
 set(gcf,'Position',[100 100 300 200])
 set(gcf,'PaperPositionMode','auto')
-% print('-depsc2', '-loose', '../figures/f_chCS_ex06_SRChistogram_b1');
+% print('-depsc2', '-loose', 'figures/f_chCS_ex06_SRChistogram_b1');
 
 
 %% L1 SEARCH, MUSTACHE
@@ -144,13 +144,13 @@ imagesc(reshape(Training*(a2./scalingFactor'),n,m)), colormap gray
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b2L']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b2L']);
 
 imagesc(reshape(b2-(Training*(a2./scalingFactor')),n,m)), colormap gray
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b2S']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b2S']);
 
 binnedError = zeros(20,1);
 for k=1:20
@@ -164,7 +164,7 @@ box on
 xlim([0 21])
 set(gcf,'Position',[100 100 300 200])
 set(gcf,'PaperPositionMode','auto')
-% print('-depsc2', '-loose', '../figures/f_chCS_ex06_SRChistogram_b2');
+% print('-depsc2', '-loose', 'figures/f_chCS_ex06_SRChistogram_b2');
 
 %% L1 SEARCH, OCCLUSION
 b3s = Bsmall(:,3);
@@ -180,7 +180,7 @@ figure
 plot(a3,'k')
 set(gcf,'Position',[100 100 300 200])
 set(gcf,'PaperPositionMode','auto')
-% print('-depsc2', '-loose', '../figures/f_chCS_ex06_SRCa3');
+% print('-depsc2', '-loose', 'figures/f_chCS_ex06_SRCa3');
 
 figure
 axes('position',[0  0  1  1])
@@ -188,14 +188,14 @@ imagesc(reshape(Training*(a3./scalingFactor'),n,m)), colormap gray
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b3L']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b3L']);
 
 imagesc(reshape(b3-(Training*(a3./scalingFactor')),n,m)), colormap gray
 caxis([0 255])
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b3S']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b3S']);
 
 binnedError = zeros(20,1);
 for k=1:20
@@ -225,7 +225,7 @@ figure
 plot(a4,'k')
 set(gcf,'Position',[100 100 300 200])
 set(gcf,'PaperPositionMode','auto')
-% print('-depsc2', '-loose', '../figures/f_chCS_ex06_SRCa4');
+% print('-depsc2', '-loose', 'figures/f_chCS_ex06_SRCa4');
 
 figure
 axes('position',[0  0  1  1])
@@ -233,14 +233,14 @@ imagesc(reshape(Training*(a4./scalingFactor'),n,m)), colormap gray
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b4L']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b4L']);
 
 imagesc(reshape(b4-(Training*(a4./scalingFactor')),n,m)), colormap gray
 caxis([0 255])
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b4S']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b4S']);
 
 binnedError = zeros(20,1);
 for k=1:20
@@ -254,7 +254,7 @@ box on
 xlim([0 21])
 set(gcf,'Position',[100 100 300 200])
 set(gcf,'PaperPositionMode','auto')
-% print('-depsc2', '-loose', '../figures/f_chCS_ex06_SRChistogram_b4');
+% print('-depsc2', '-loose', 'figures/f_chCS_ex06_SRChistogram_b4');
 
 
 %% LEAST SQUARES IS NO GOOD
@@ -264,7 +264,7 @@ figure
 plot(a4L2,'k')
 set(gcf,'Position',[100 100 300 200])
 set(gcf,'PaperPositionMode','auto')
-% print('-depsc2', '-loose', '../figures/f_chCS_ex06_SRCa4L2');
+% print('-depsc2', '-loose', 'figures/f_chCS_ex06_SRCa4L2');
 
 figure
 axes('position',[0  0  1  1])
@@ -272,14 +272,14 @@ imagesc(reshape(Training*a4L2,n,m)), colormap gray
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b4L_L2']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b4L_L2']);
 
 imagesc(reshape(b4-(Training*a4),n,m)), colormap gray
 % caxis([0 255])
 axis off
 set(gcf,'Position',[100 100 168*2 192*2])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_b4S_L2']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_b4S_L2']);
 
 
 
@@ -292,7 +292,7 @@ bar(binnedError,'FaceColor',[.7 .7 .7])
 xlim([0 21])
 set(gcf,'Position',[100 100 300 200])
 set(gcf,'PaperPositionMode','auto')
-% print('-depsc2', '-loose', '../figures/f_chCS_ex06_SRChistogram_b4L2');
+% print('-depsc2', '-loose', 'figures/f_chCS_ex06_SRChistogram_b4L2');
 
 %%  PLOT LIBRARY AND TEST SAMPLE
 figure
@@ -301,13 +301,13 @@ imagesc(TrainingSmall), colormap gray
 axis off
 set(gcf,'Position',[100 100 1200 240])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_LIBRARYSMALL']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_LIBRARYSMALL']);
 
 imagesc((b1s)), colormap gray, axis off
 caxis([0 255])
 set(gcf,'Position',[100 100 50 900])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_TESTIMAGE']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_TESTIMAGE']);
 
 axes('position',[0  0  1  1])
 
@@ -315,4 +315,4 @@ imagesc((450-a1')), colormap gray, axis off
 caxis([0 550])
 set(gcf,'Position',[1 1 1440 50])
 set(gcf,'PaperPositionMode','auto')
-% print('-dpng','-r0','-loose', ['../figures/f_chCS_EX06SRC_TESTSPARSE']);
+% print('-dpng','-r0','-loose', ['figures/f_chCS_EX06SRC_TESTSPARSE']);

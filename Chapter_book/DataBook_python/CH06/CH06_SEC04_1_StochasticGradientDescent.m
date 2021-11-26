@@ -26,7 +26,11 @@ for jj=1:3
     dfx=interp2(X(i1,i2),Y(i1,i2),dFx(i1,i2),x(j+1),y(j+1));
     dfy=interp2(X(i1,i2),Y(i1,i2),dFy(i1,i2),x(j+1),y(j+1));
     if abs(f(j+1)-f(j))<10^(-6) % check convergence
+        'converged'
         break
+    end
+    if j==50
+        'failed to converge'
     end
   end    
   if jj==1; x1=x; y1=y; f1=f; end

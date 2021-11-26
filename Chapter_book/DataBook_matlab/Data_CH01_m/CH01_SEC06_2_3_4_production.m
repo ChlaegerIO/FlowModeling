@@ -1,6 +1,6 @@
 clear all, close all, clc
 
-load ../DATA/allFaces.mat
+load ../Data_DATA/allFaces.mat
 
 % We use the first 36 people for training data
 trainingFaces = faces(:,1:sum(nfaces(1:36)));

@@ -36,4 +36,4 @@ axis([-.1 .1 -20 400])
 
 set(gcf,'Position',[100 100 600 350])
 set(gcf,'PaperPositionMode','auto')
-print('-depsc2', '-loose', '../figures/f_chCS_ex03_underdetermined');
+print('-depsc2', '-loose', 'figures/f_chCS_ex03_underdetermined');
