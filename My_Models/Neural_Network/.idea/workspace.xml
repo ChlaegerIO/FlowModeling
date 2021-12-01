@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="3da718d5-d491-4b30-8076-12ecbe869547" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC02.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC02.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC02_production.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC02_production.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC04_3_Housing.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC04_3_Housing.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC06_1.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC06_1.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC06_2_3_4.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC06_2_3_4.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC06_2_3_4_production.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/CH01_SEC06_2_3_4_production.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/rSVD.eps" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH01_m/rSVD.eps" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC01_Compress.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC01_Compress.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC03_1_Underdetermined.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC03_1_Underdetermined.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC05_1_RobustRegression.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC05_1_RobustRegression.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC05_1_RobustRegression_production.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC05_1_RobustRegression_production.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC05_2_LASSO.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC05_2_LASSO.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC06_SparseRepresentation.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC06_SparseRepresentation.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC06_SparseRepresentation_production.m" beforeDir="false" afterPath="$PROJECT_DIR$/../DataBook_matlab/Data_CH03_m/CH03_SEC06_SparseRepresentation_production.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CH06/.ipynb_checkpoints/CH06_SEC01_1_NN-checkpoint.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/CH06/.ipynb_checkpoints/CH06_SEC01_1_NN-checkpoint.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CH06/.ipynb_checkpoints/CH06_SEC05_1_DeepCNN-checkpoint.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/CH06/.ipynb_checkpoints/CH06_SEC05_1_DeepCNN-checkpoint.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CH06/.ipynb_checkpoints/CH06_SEC06_1_NNLorenz-checkpoint.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/CH06/.ipynb_checkpoints/CH06_SEC06_1_NNLorenz-checkpoint.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CH06/CH06_SEC01_1_NN.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/CH06/CH06_SEC01_1_NN.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CH06/CH06_SEC04_1_StochasticGradientDescent.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/CH06/CH06_SEC04_1_StochasticGradientDescent.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CH06/CH06_SEC04_1_StochasticGradientDescent.m" beforeDir="false" afterPath="$PROJECT_DIR$/CH06/CH06_SEC04_1_StochasticGradientDescent.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CH06/CH06_SEC05_1_DeepCNN.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/CH06/CH06_SEC05_1_DeepCNN.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CH06/CH06_SEC06_1_NNLorenz.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/CH06/CH06_SEC06_1_NNLorenz.ipynb" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="ProjectId" id="21P7XYTKJwGWSy44fb3xCiXRwMI" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="3da718d5-d491-4b30-8076-12ecbe869547" name="Changes" comment="" />
+      <created>1637830909215</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1637830909215</updated>
+    </task>
+    <servers />
+  </component>
+</project>
