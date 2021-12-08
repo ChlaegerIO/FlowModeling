@@ -363,7 +363,8 @@ def train(epoch):
         if batch_id == 2:
             break
     print('\n')
-    outputs.append((epoch, img, recon_tensor))
+    outputs.append((epoch, img, recon_tensor, total_lossal_loss, loss_category))
+
     
 # evaluation function
 evaluated_dict = {}
