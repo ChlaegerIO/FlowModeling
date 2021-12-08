@@ -398,7 +398,7 @@ def evaluate():
     
     # append average loss of this epoch
     ae_loss.append(ae_lossE/len(validation_data))
-    sindy_loss.append(sindy_lossE(len(validation_data)))
+    sindy_loss.append(sindy_lossE/len(validation_data))
 
 # epoch loop
 for epoch in range(params['number_epoch']):
