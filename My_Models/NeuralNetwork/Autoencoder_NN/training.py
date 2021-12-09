@@ -2,9 +2,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
+#from torch.autograd import Variable
+#from torch.utils.data import DataLoader
+#from torch.utils.data import Dataset
 from torchvision import transforms
 # read videos
 #import pylab          # play video
@@ -12,9 +12,9 @@ from os import listdir
 import cv2
 # others
 import os
-from PIL import Image
+#from PIL import Image
 import random
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 # SINDy
 import sys
 sys.path.append("src")
@@ -24,6 +24,8 @@ import numpy as np
 #############################################################################################################
 # helping function implementation
 #############################################################################################################
+
+print('hello its me')
 
 def printProgress(epoch, batch_id, loss):
     """
@@ -114,7 +116,7 @@ params = {}
 # autoencoder settings
 params['number_epoch'] = 10000                               # number of epochs
 params['z_dim'] = 5                                     # number of coordinates for SINDy
-params['batch_size'] = 64                                # batch size
+params['batch_size'] = 32                                # batch size
 params['lr_rate'] = 0.1                                 # learning rate
 params['weight_decay'] = 1e-8
 
@@ -134,7 +136,7 @@ params['include_sine'] = False
 #############################################################################################################
 # data preprocessing
 #############################################################################################################
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('cuda available: ', torch.cuda.is_available())
 #print('cuda memory', torch.cuda.memory_summary(device=None, abbreviated=False))
 torch.cuda.empty_cache()
@@ -162,8 +164,8 @@ for f in file_names:
     # if count == 1:
     #     break
     # job gets killed with to much data?
-    if len(train_data) >= 60:
-        break
+    #if len(train_data) >= 60:
+    #    break
     count += 1
     vidcap = cv2.VideoCapture('Videos/train/' + f)
     success,imgR = vidcap.read()
@@ -173,6 +175,8 @@ for f in file_names:
         imgR_tensor = transform(imgR)
         train_data_tmp.append(imgR_tensor)
         success,imgR = vidcap.read()
+        #if len(train_data) >= 60:
+        #    break
         # make a batch
         if len(train_data_tmp) >= params['batch_size']:
             train_data.append(torch.stack(train_data_tmp))
@@ -206,23 +210,23 @@ transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 
 
 # read data to list and transform to tensor
 count = 0
-for f in listdir('Videos/test/'):
-    if f != 'high_res':
-        # just for testing (save time)
-        # if count == 1:
-        #     break
-        count += 1
-        vidcap = cv2.VideoCapture('Videos/test/' + f)
-        success,imgR = vidcap.read()
-        print('Read:',f)
-        while success:
-            imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
-            imgR_tensor = transform(imgR)
-            test_data.append(imgR_tensor)
-            success,imgR = vidcap.read()
-        test_idxOfNewVideo.append(len(test_data))
+# for f in listdir('Videos/test/'):
+#     if f != 'high_res':
+#         # just for testing (save time)
+#         # if count == 1:
+#         #     break
+#         count += 1
+#         vidcap = cv2.VideoCapture('Videos/test/' + f)
+#         success,imgR = vidcap.read()
+#         print('Read:',f)
+#         while success:
+#             imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
+#             imgR_tensor = transform(imgR)
+#             test_data.append(imgR_tensor)
+#             success,imgR = vidcap.read()
+#         test_idxOfNewVideo.append(len(test_data))
     
-print('test data: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
+# print('test data: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
 
 
 #############################################################################################################
@@ -325,7 +329,7 @@ if os.path.isfile(autoencoder_path):
 else:
     autoencoder = Autoencoder()
     print('loaded new autoencoder')
-autoencoder = autoencoder.cuda()
+autoencoder = autoencoder#.cuda()
 
 # optimization technique
 criterion = nn.MSELoss()
@@ -342,8 +346,7 @@ def train(epoch):
 
     '''
     for batch_id,img in enumerate(train_data):
-        if torch.cuda.is_available():
-            img = img.cuda()  
+        img = img.cuda()  
         encode_tensor, recon_tensor = autoencoder(img, 0, mode='train')
         network['rec_loss'] = criterion(recon_tensor, img)
     
@@ -367,6 +370,7 @@ def train(epoch):
         
         # print progress
         printProgress(epoch, batch_id, total_loss)
+        img = img.detach()
         # if batch_id == 2:
         #     break
     print('\n')
