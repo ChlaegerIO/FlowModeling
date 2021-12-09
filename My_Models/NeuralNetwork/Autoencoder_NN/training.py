@@ -371,6 +371,9 @@ def train(epoch):
         #     break
     print('\n')
     outputs.append((epoch, float(img), float(recon_tensor), float(combined_loss), loss_category))
+    # delete from cuda
+    del encode_tensor
+    del recon_tensor
 
     
 # evaluation function
@@ -394,7 +397,8 @@ def evaluate():
             evaluated_dict['z'] = float(encode_eval_tensor)
             eval_theta = torch.from_numpy(sindy.sindy_library(evaluated_dict['z'], params['poly_order'], include_sine=params['include_sine']))
             evaluated_dict['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float()
-            _, evaluated_dict['dx_sindy'] = autoencoder(0, evaluated_dict['dz_sindy'], mode='test')
+            _, recon_sindy_eval_tensor = autoencoder(0, evaluated_dict['dz_sindy'], mode='test')
+            evaluated_dict['dx_sindy'] = float(recon_sindy_eval_tensor)
             # autoencoder loss
             ae_lossE += float(F.mse_loss(evaluated_dict['x'], img))
         else:
@@ -410,6 +414,9 @@ def evaluate():
     # append average loss of this epoch
     ae_loss.append(ae_lossE/len(validation_data))
     sindy_loss.append(sindy_lossE/len(validation_data))
+    del encode_eval_tensor
+    del recon_eval_tensor
+    del recon_sindy_eval_tensor
 
 # epoch loop
 for epoch in range(params['number_epoch']):
