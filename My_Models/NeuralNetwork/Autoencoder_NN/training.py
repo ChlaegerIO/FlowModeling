@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torchvision import transforms
 # read videos
-import pylab          # play video
+#import pylab          # play video
 from os import listdir
 import cv2
 # others
@@ -136,6 +136,9 @@ params['include_sine'] = False
 #############################################################################################################
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('cuda available: ', torch.cuda.is_available())
+print('cuda memory', torch.cuda.memory_summary(device=None, abbreviated=False))
+torch.cuda.empty_cache()
+print('cuda memory after empty_cache()', torch.cuda.memory_summary(device=None, abbreviated=False))
 
 
 # read the train videos in random order
@@ -166,7 +169,6 @@ for f in file_names:
     while success:
         imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
         imgR_tensor = transform(imgR)
-        imgR_tensor = imgR_tensor.cuda()
         train_data_tmp.append(imgR_tensor)
         success,imgR = vidcap.read()
         # make a batch
