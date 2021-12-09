@@ -135,11 +135,12 @@ params['include_sine'] = False
 # data preprocessing
 #############################################################################################################
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print('cuda available: ', torch.cuda.is_available())
 
 
 # read the train videos in random order
 file_names = []
-for f in listdir('../../Videos/train/'):
+for f in listdir('Videos/train/'):
     if f != 'high_res':
         file_names.append(f)
 
@@ -156,15 +157,16 @@ train_idxOfNewVideo = []
 count = 0
 for f in file_names:
     # just for testing (save time)
-    if count == 1:
-        break
+    # if count == 1:
+    #     break
     count += 1
-    vidcap = cv2.VideoCapture('../../Videos/train/' + f)
+    vidcap = cv2.VideoCapture('Videos/train/' + f)
     success,imgR = vidcap.read()
     print('Read training data:',f)
     while success:
         imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
         imgR_tensor = transform(imgR)
+        imgR_tensor = imgR_tensor.cuda()
         train_data_tmp.append(imgR_tensor)
         success,imgR = vidcap.read()
         # make a batch
@@ -172,7 +174,7 @@ for f in file_names:
             train_data.append(torch.stack(train_data_tmp))
             train_data_tmp = []
     train_idxOfNewVideo.append(len(train_data))
-    print('train data', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+    print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
 
 
@@ -186,9 +188,8 @@ for i in range(0,nbr_batch):
     validation_data.append(element)
     train_data.pop(choose)
 
-print('validation data done:')
-print('validation data', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]), len(validation_data[0][0][0][0]))
-print('train data', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+print('validation data: ', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]))
+print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
 
 # read test videos
@@ -201,13 +202,13 @@ transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 
 
 # read data to list and transform to tensor
 count = 0
-for f in listdir('../../Videos/test/'):
+for f in listdir('Videos/test/'):
     if f != 'high_res':
         # just for testing (save time)
-        if count == 1:
-            break
+        # if count == 1:
+        #     break
         count += 1
-        vidcap = cv2.VideoCapture('../../Videos/test/' + f)
+        vidcap = cv2.VideoCapture('Videos/test/' + f)
         success,imgR = vidcap.read()
         print('Read:',f)
         while success:
@@ -217,7 +218,7 @@ for f in listdir('../../Videos/test/'):
             success,imgR = vidcap.read()
         test_idxOfNewVideo.append(len(test_data))
     
-print(len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
+print('test data: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
 
 
 #############################################################################################################
@@ -336,7 +337,9 @@ def train(epoch):
     training function for the autoencoder
 
     '''
-    for batch_id,img in enumerate(train_data):      
+    for batch_id,img in enumerate(train_data):
+        if torch.cuda.is_available():
+            img = img.cuda()  
         encode_tensor, recon_tensor = autoencoder(img, 0, mode='train')
         network['rec_loss'] = criterion(recon_tensor, img)
     
@@ -349,7 +352,7 @@ def train(epoch):
             network['dz'] = encode_tensor
             network['dz_sindy'] = calculateSindy(network, params).float()
             _, network['dx_decode'] = autoencoder(0, network['dz_sindy'], mode='test')
-            total_loss, _ = calculateLoss(network, params)            # total loss with SINDy
+            total_loss, loss_category = calculateLoss(network, params)            # total loss with SINDy
             # now advance one step
             network['z'] = network['dz']
                 
@@ -360,10 +363,10 @@ def train(epoch):
         
         # print progress
         printProgress(epoch, batch_id, total_loss)
-        if batch_id == 2:
-            break
+        # if batch_id == 2:
+        #     break
     print('\n')
-    outputs.append((epoch, img, recon_tensor, total_lossal_loss, loss_category))
+    outputs.append((epoch, img, recon_tensor, total_loss, loss_category))
 
     
 # evaluation function
@@ -410,5 +413,6 @@ for epoch in range(params['number_epoch']):
 
 # save model
 torch.save(autoencoder, 'results/Ae_10000epoch_bs64_lr0-1_z5_sindt0-5_poly5.pt')
+torch.save(autoencoder, 'results/Xi_10000epoch_bs64_lr0-1_z5_sindt0-5_poly5.pt')
 
 torch.cuda.empty_cache()
