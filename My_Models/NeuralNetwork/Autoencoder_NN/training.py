@@ -174,16 +174,19 @@ for f in file_names:
         imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
         imgR_tensor = transform(imgR)
         train_data_tmp.append(imgR_tensor)
+        del imgR
+        del imgR_tensor
         success,imgR = vidcap.read()
         #if len(train_data) >= 60:
         #    break
         # make a batch
         if len(train_data_tmp) >= params['batch_size']:
-            train_data.append(torch.stack(train_data_tmp))
+            train_data.append(torch.stack(train_data_tmp).cuda())
             train_data_tmp = []
     train_idxOfNewVideo.append(len(train_data))
     print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
+del train_data_tmp
 
 
 # split into validation and training set
