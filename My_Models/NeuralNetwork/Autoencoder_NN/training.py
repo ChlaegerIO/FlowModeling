@@ -78,10 +78,10 @@ def calculateLoss(network, params):
     
     # separate view of each loss
     separate_loss = []
-    separate_loss.append(rec_loss)
-    separate_loss.append(sindy_x_loss)
-    separate_loss.append(sindy_z_loss)
-    separate_loss.append(sparse_loss)
+    separate_loss.append(float(rec_loss))
+    separate_loss.append(float(sindy_x_loss))
+    separate_loss.append(float(sindy_z_loss))
+    separate_loss.append(float(sparse_loss))
     
     tot_loss = (params['loss_weight_decoder'] * rec_loss
                 + params['loss_weight_sindy_x'] * sindy_x_loss 
@@ -203,10 +203,6 @@ print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0])
 # read test videos
 test_data = []
 test_idxOfNewVideo = []
-
-# define transform to tensor and resize to 1080x1920
-normalize = transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])    # normalize around mean with sigma (std)
-transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
 
 # read data to list and transform to tensor
 count = 0
@@ -352,29 +348,29 @@ def train(epoch):
     
         # x, z is current batch_id, dx, dz is next one (in else we take dz as current and compare with x from before)
         if batch_id == 0:
-            total_loss = network['rec_loss']       
-            network['z'] = encode_tensor
+            combined_loss = network['rec_loss']       
+            network['z'] = float(encode_tensor)
         else:
-            network['dx'] = img
-            network['dz'] = encode_tensor
+            network['dx'] = float(img)
+            network['dz'] = float(encode_tensor)
             network['dz_sindy'] = calculateSindy(network, params).float()
             _, network['dx_decode'] = autoencoder(0, network['dz_sindy'], mode='test')
-            total_loss, loss_category = calculateLoss(network, params)            # total loss with SINDy
+            combined_loss, loss_category = calculateLoss(network, params)            # total loss with SINDy
             # now advance one step
             network['z'] = network['dz']
                 
         # optimization and backpropagation
         optimizer.zero_grad()
-        total_loss.backward()
+        combined_loss.backward()
         optimizer.step()
         
         # print progress
-        printProgress(epoch, batch_id, total_loss)
+        printProgress(epoch, batch_id, combined_loss)
         img = img.detach()
         # if batch_id == 2:
         #     break
     print('\n')
-    outputs.append((epoch, img, recon_tensor, total_loss, loss_category))
+    outputs.append((epoch, float(img), float(recon_tensor), float(combined_loss), loss_category))
 
     
 # evaluation function
@@ -393,20 +389,23 @@ def evaluate():
         # an other video sequence
         if i % params['batch_size'] == 0:
             # x, z are at the current time
-            evaluated_dict['z'], evaluated_dict['x'] = autoencoder(img, 0, mode='train')
+            encode_eval_tensor, recon_eval_tensor = autoencoder(img, 0, mode='train')
+            evaluated_dict['x'] = float(recon_eval_tensor)
+            evaluated_dict['z'] = float(encode_eval_tensor)
             eval_theta = torch.from_numpy(sindy.sindy_library(evaluated_dict['z'], params['poly_order'], include_sine=params['include_sine']))
             evaluated_dict['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float()
             _, evaluated_dict['dx_sindy'] = autoencoder(0, evaluated_dict['dz_sindy'], mode='test')
             # autoencoder loss
-            ae_lossE += F.mse_loss(evaluated_dict['x'], img)
+            ae_lossE += float(F.mse_loss(evaluated_dict['x'], img))
         else:
             # sindy loss
-            sindy_lossE += F.mse_loss(evaluated_dict['dx_sindy'], img)
+            sindy_lossE += float(F.mse_loss(evaluated_dict['dx_sindy'], img))
             evaluated_dict['z'], evaluated_dict['x'] = autoencoder(img, 0, mode='train')            
             eval_theta = torch.from_numpy(sindy.sindy_library(evaluated_dict['z'].detach().numpy(), params['poly_order'], include_sine=params['include_sine']))
             evaluated_dict['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float()
-            _, evaluated_dict['dx_sindy'] = autoencoder(0, evaluated_dict['dz_sindy'], mode='test')
-            ae_lossE += F.mse_loss(evaluated_dict['x'], img)
+            _, recon_sindy_eval_tensor = autoencoder(0, evaluated_dict['dz_sindy'], mode='test')
+            evaluated_dict['dx_sindy'] = float(recon_sindy_eval_tensor)
+            ae_lossE += float(F.mse_loss(evaluated_dict['x'], img))
     
     # append average loss of this epoch
     ae_loss.append(ae_lossE/len(validation_data))
