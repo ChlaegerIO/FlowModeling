@@ -8,3 +8,4 @@
 # ignore folders
 My_Models/NeuralNetwork/Lib/
 Chapter_book/DataBook_Python/Lib/
+.vscode/
