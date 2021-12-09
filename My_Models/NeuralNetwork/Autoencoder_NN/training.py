@@ -136,9 +136,8 @@ params['include_sine'] = False
 #############################################################################################################
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('cuda available: ', torch.cuda.is_available())
-print('cuda memory', torch.cuda.memory_summary(device=None, abbreviated=False))
+#print('cuda memory', torch.cuda.memory_summary(device=None, abbreviated=False))
 torch.cuda.empty_cache()
-print('cuda memory after empty_cache()', torch.cuda.memory_summary(device=None, abbreviated=False))
 
 
 # read the train videos in random order
@@ -162,6 +161,9 @@ for f in file_names:
     # just for testing (save time)
     # if count == 1:
     #     break
+    # job gets killed with to much data?
+    if len(train_data) >= 60:
+        break
     count += 1
     vidcap = cv2.VideoCapture('Videos/train/' + f)
     success,imgR = vidcap.read()
