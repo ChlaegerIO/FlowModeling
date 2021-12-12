@@ -7,12 +7,10 @@ import torch.nn.functional as F
 #from torch.utils.data import Dataset
 from torchvision import transforms
 # read videos
-#import pylab          # play video
 from os import listdir
 import cv2
 # others
 import os
-#from PIL import Image
 import random
 #import matplotlib.pyplot as plt
 # SINDy
@@ -24,8 +22,6 @@ import numpy as np
 #############################################################################################################
 # helping function implementation
 #############################################################################################################
-
-print('hello its me')
 
 def printProgress(epoch, batch_id, loss):
     """
@@ -114,10 +110,10 @@ def calculateSindy(network, params):
 params = {}
 
 # autoencoder settings
-params['number_epoch'] = 10000                               # number of epochs
+params['number_epoch'] = 100000                               # number of epochs
 params['z_dim'] = 5                                     # number of coordinates for SINDy
 params['batch_size'] = 32                                # batch size
-params['lr_rate'] = 0.1                                 # learning rate
+params['lr_rate'] = 0.01                                 # learning rate
 params['weight_decay'] = 1e-8
 
 
@@ -132,6 +128,11 @@ params['sindy_threshold'] = 0.5
 params['poly_order'] = 4
 params['include_sine'] = False
 
+# video processing
+path_train = '../../Videos/train/'
+path_test = '../../Videos/test/'
+path_autoencoder = 'results/Autoencoder_#epoch_v1.pt'
+
 
 #############################################################################################################
 # data preprocessing
@@ -144,7 +145,7 @@ torch.cuda.empty_cache()
 
 # read the train videos in random order
 file_names = []
-for f in listdir('Videos/train/'):
+for f in listdir(path_train):
     if f != 'high_res':
         file_names.append(f)
 
@@ -152,41 +153,29 @@ random.shuffle(file_names)
 
 # define transform to tensor and resize to 1080x1920
 normalize = transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])    # normalize around mean with sigma (std)
+# pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
 transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
 
 # read data to list and transform to tensor
 train_data_tmp = []
 train_data = []
 train_idxOfNewVideo = []
-count = 0
 for f in file_names:
-    # just for testing (save time)
-    # if count == 1:
-    #     break
-    # job gets killed with to much data?
-    #if len(train_data) >= 60:
-    #    break
-    count += 1
-    vidcap = cv2.VideoCapture('Videos/train/' + f)
+    vidcap = cv2.VideoCapture(path_train + f)
     success,imgR = vidcap.read()
     print('Read training data:',f)
     while success:
         imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
         imgR_tensor = transform(imgR)
         train_data_tmp.append(imgR_tensor)
-        del imgR
-        del imgR_tensor
         success,imgR = vidcap.read()
-        #if len(train_data) >= 60:
-        #    break
-        # make a batch
         if len(train_data_tmp) >= params['batch_size']:
-            train_data.append(torch.stack(train_data_tmp).cuda())
+            train_data.append(torch.stack(train_data_tmp))
             train_data_tmp = []
     train_idxOfNewVideo.append(len(train_data))
     print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
-del train_data_tmp
+print('train data reading done!')
 
 
 # split into validation and training set
@@ -199,7 +188,7 @@ for i in range(0,nbr_batch):
     validation_data.append(element)
     train_data.pop(choose)
 
-print('validation data: ', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]))
+print('validation data construction done: ', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]))
 print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
 
@@ -209,7 +198,7 @@ test_idxOfNewVideo = []
 
 # read data to list and transform to tensor
 count = 0
-# for f in listdir('Videos/test/'):
+# for f in listdir(path_test):
 #     if f != 'high_res':
 #         # just for testing (save time)
 #         # if count == 1:
@@ -225,7 +214,7 @@ count = 0
 #             success,imgR = vidcap.read()
 #         test_idxOfNewVideo.append(len(test_data))
     
-# print('test data: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
+# print('test data reading done: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
 
 
 #############################################################################################################
@@ -236,57 +225,49 @@ class Autoencoder(nn.Module):
     def __init__(self):
         super(Autoencoder, self).__init__() 
         self.encode = nn.Sequential(
-            # encoder: N, 3, 1080, 1920
-            nn.Conv2d(3, 16, 5), # N, 16, 1076, 1916
+            # encoder: N, 3, 404, 720
+            nn.Conv2d(3, 16, 2), # N, 16, 403, 719
             nn.ReLU(),
-            nn.Conv2d(16, 32, 5), # N, 32, 1072, 1912
+            nn.Conv2d(16, 32, 2), # N, 32, 402, 718
             nn.ReLU(),
-            nn.MaxPool2d((2,3), stride=(2,3)), # N, 32, 536, 637              -- pool --
-            nn.Conv2d(32, 64, 8, stride=2, padding=1), # N, 64, 266, 316
+            nn.MaxPool2d((2,3), stride=(2,3)), # N, 32, 201, 239              -- pool --
+            nn.Conv2d(32, 64, 4), # N, 64, 198, 236
             nn.ReLU(),
-            nn.Conv2d(64, 96, 7), # N, 96, 260, 310
+            nn.Conv2d(64, 96, 4), # N, 96, 195, 233
             nn.ReLU(),
-            nn.MaxPool2d(2, stride=2), # N, 96, 130, 155                      -- pool --
-            nn.Conv2d(96, 128, 11), # N, 128, 120, 145
+            nn.MaxPool2d(2, stride=2), # N, 96, 97, 116                       -- pool --
+            nn.Conv2d(96, 128, 5), # N, 128, 93, 112
             nn.ReLU(),
-            nn.Conv2d(128, 150, 4, stride=2, padding=1), # N, 150, 60, 72
+            nn.Conv2d(128, 150, 5, stride=2, padding=1), # N, 150, 46, 55
             nn.ReLU(),
-            nn.Conv2d(150, 200, 11), # N, 200, 50, 62
-            nn.ReLU(),
-            nn.MaxPool2d(2,stride=2), # N, 200, 25, 31                        -- pool --
-            nn.Conv2d(200, 200, 9, stride=2, padding=1), # N, 200, 10, 13
-            nn.ReLU(),
-            nn.Conv2d(200, 200, 10), # N, 200, 1, 4
+            nn.MaxPool2d(2,stride=2), # N, 150, 23, 27                        -- pool --
+            nn.Conv2d(150, 200, 9, stride=2), # N, 200, 8, 10
             nn.ReLU()
         )
         
-        self.fc1 = nn.Linear(200*4,params['z_dim'])
+        self.fc1 = nn.Linear(200*8*10,params['z_dim'])
         # Note: nn.MaxPool2d -> use nn.MaxUnpool2d, or use different kernelsize, stride etc to compensate...
         # Input [-1, +1] -> use nn.Tanh    
         
         # note: encoder and decoder are not symmetric
         self.decode = nn.Sequential(
-            nn.ConvTranspose2d(200, 200, 4), # N, 200, 4, 7
+            nn.ConvTranspose2d(200, 150, 4), # N, 150, 11, 13
             nn.ReLU(),
-            nn.ConvTranspose2d(200, 200, 9, stride=2, padding=2, output_padding=(1,0)), # N, 200, 12, 17
+            nn.ConvTranspose2d(150, 128, 5, stride=(2,3), padding=(2,2), output_padding=(0,2)), # N, 128, 21, 39
             nn.ReLU(),
-            nn.ConvTranspose2d(200, 150, 8, stride=4, padding=(0,1), output_padding=(3,0)), # N, 150, 55, 70
+            nn.ConvTranspose2d(128, 96, 4, stride=2, padding=(1,0)), # N, 96, 42, 80
             nn.ReLU(),
-            nn.ConvTranspose2d(150, 128, 8), # N, 128, 62, 77
+            nn.ConvTranspose2d(96, 64, 8), # N, 64, 49, 87
             nn.ReLU(),
-            nn.ConvTranspose2d(128, 96, 6, stride=(2,3), padding=1), # N, 96, 126, 232
+            nn.ConvTranspose2d(64, 32, 8, stride=2, padding=(2,1), output_padding=(0,1)), # N, 32, 100, 179
             nn.ReLU(),
-            nn.ConvTranspose2d(96, 64, 7), # N, 64, 132, 238
+            nn.ConvTranspose2d(32, 16, 5, stride=2, padding=1), # N, 16, 201, 359
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, 8, stride=2, padding=(1,2), output_padding=(1,1)), # N, 32, 296, 479
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, 16, 5, stride=2, padding=1), # N, 16, 539, 959
-            nn.ReLU(),
-            nn.ConvTranspose2d(16, 3, 5, stride=2, padding=1, output_padding=(1,1)), # N, 3, 1080, 1920
+            nn.ConvTranspose2d(16, 3, 5, stride=2, padding=1, output_padding=(1,1)), # N, 3, 404, 720
             nn.ReLU()
         )   
         
-        self.fc2 = nn.Linear(params['z_dim'], 200*4)
+        self.fc2 = nn.Linear(params['z_dim'], 200*8*10)
 
     def forward(self, x, z, mode):
         '''
@@ -300,18 +281,18 @@ class Autoencoder(nn.Module):
         if mode == 'train':
             #print('train mode')
             encoded = self.encode(x)
-            encoded = encoded.view(-1,200*4)
+            encoded = encoded.view(-1,200*8*10)
             encoded = self.fc1(encoded)
 
             decoded = self.fc2(encoded)
-            decoded = decoded.view(-1,200,1,4)
-            decoded = self.decode(decoded)            
+            decoded = decoded.view(-1,200,8,10)
+            decoded = self.decode(decoded)
         else:
             #print('test mode')
             encoded = torch.zeros(1)
 
             decoded = self.fc2(z)
-            decoded = decoded.view(-1,200,1,4)
+            decoded = decoded.view(-1,200,8,10)
             decoded = self.decode(decoded)
         
         return encoded, decoded
@@ -321,14 +302,14 @@ class Autoencoder(nn.Module):
 #############################################################################################################
 
 # load model
-autoencoder_path = 'results/Autoencoder_#epoch_v1.pt'
-if os.path.isfile(autoencoder_path):
-    autoencoder = torch.load(autoencoder_path)
-    print('loaded autoencoder', autoencoder_path)
+if os.path.isfile(path_autoencoder):
+    autoencoder = torch.load(path_autoencoder)
+    print('loaded autoencoder', path_autoencoder)
 else:
     autoencoder = Autoencoder()
     print('loaded new autoencoder')
-autoencoder = autoencoder#.cuda()
+
+autoencoder = autoencoder.cuda()
 
 # optimization technique
 criterion = nn.MSELoss()
@@ -370,13 +351,11 @@ def train(epoch):
         # print progress
         printProgress(epoch, batch_id, combined_loss)
         img = img.detach()
-        # if batch_id == 2:
-        #     break
     print('\n')
-    outputs.append((epoch, float(img), float(recon_tensor), float(combined_loss), loss_category))
+    outputs.append((epoch, float(combined_loss), loss_category))
     # delete from cuda
-    del encode_tensor
-    del recon_tensor
+    # del encode_tensor
+    # del recon_tensor
 
     
 # evaluation function
@@ -417,19 +396,21 @@ def evaluate():
     # append average loss of this epoch
     ae_loss.append(ae_lossE/len(validation_data))
     sindy_loss.append(sindy_lossE/len(validation_data))
-    del encode_eval_tensor
-    del recon_eval_tensor
-    del recon_sindy_eval_tensor
+    # del encode_eval_tensor
+    # del recon_eval_tensor
+    # del recon_sindy_eval_tensor
 
 # epoch loop
 for epoch in range(params['number_epoch']):
     train(epoch)
     evaluate()
 
+    if epoch % 100 == 0:
+        # save model every 100 epoch
+        name_Ae = 'results/Ae_' + str(epoch) + 'epoch_bs64_lr0-1_z5_sindth0-5_poly5.pt'
+        name_Xi = 'results/Xi_' + str(epoch) + 'epoch_bs64_lr0-1_z5_sindth0-5_poly5.pt'
+        torch.save(autoencoder, name_Ae)
+        torch.save(autoencoder, name_Xi)
 
-
-# save model
-torch.save(autoencoder, 'results/Ae_10000epoch_bs64_lr0-1_z5_sindt0-5_poly5.pt')
-torch.save(autoencoder, 'results/Xi_10000epoch_bs64_lr0-1_z5_sindt0-5_poly5.pt')
 
 torch.cuda.empty_cache()
