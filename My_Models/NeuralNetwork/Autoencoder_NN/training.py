@@ -92,12 +92,12 @@ def calculateSindy(network, params):
     Calculate Theta(z), Xi and dz
     
     '''
-    z = network['z'].detach().numpy()
-    dz = network['dz'].detach().numpy()
+    z = network['z'].cpu().detach().numpy()
+    dz = network['dz'].cpu().detach().numpy()
     
     network['Theta'] = torch.from_numpy(sindy.sindy_library(z, params['poly_order'], include_sine=params['include_sine']))
     network['Xi'] = torch.from_numpy(sindy.sindy_fit(network['Theta'], dz, params['sindy_threshold']))
-    dz_predict = torch.matmul(network['Theta'],network['Xi'])
+    dz_predict = torch.matmul(network['Theta'],network['Xi']).cuda()
     
     return dz_predict
 
@@ -112,7 +112,7 @@ params = {}
 # autoencoder settings
 params['number_epoch'] = 100000                               # number of epochs
 params['z_dim'] = 5                                     # number of coordinates for SINDy
-params['batch_size'] = 32                                # batch size
+params['batch_size'] = 4                                # batch size
 params['lr_rate'] = 0.01                                 # learning rate
 params['weight_decay'] = 1e-8
 
@@ -129,8 +129,8 @@ params['poly_order'] = 4
 params['include_sine'] = False
 
 # video processing
-path_train = '../../Videos/train/'
-path_test = '../../Videos/test/'
+path_train = 'Videos/train/'
+path_test = 'Videos/test/'
 path_autoencoder = 'results/Autoencoder_#epoch_v1.pt'
 
 
@@ -154,13 +154,16 @@ random.shuffle(file_names)
 # define transform to tensor and resize to 1080x1920
 normalize = transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])    # normalize around mean with sigma (std)
 # pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
-transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
+# transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
+transform = transforms.ToTensor()
 
 # read data to list and transform to tensor
 train_data_tmp = []
 train_data = []
 train_idxOfNewVideo = []
 for f in file_names:
+    if len(train_data) > 200:
+        break
     vidcap = cv2.VideoCapture(path_train + f)
     success,imgR = vidcap.read()
     print('Read training data:',f)
@@ -333,10 +336,10 @@ def train(epoch):
         # x, z is current batch_id, dx, dz is next one (in else we take dz as current and compare with x from before)
         if batch_id == 0:
             combined_loss = network['rec_loss']       
-            network['z'] = float(encode_tensor)
+            network['z'] = encode_tensor#.float()
         else:
-            network['dx'] = float(img)
-            network['dz'] = float(encode_tensor)
+            network['dx'] = img#.float()
+            network['dz'] = encode_tensor#.float()
             network['dz_sindy'] = calculateSindy(network, params).float()
             _, network['dx_decode'] = autoencoder(0, network['dz_sindy'], mode='test')
             combined_loss, loss_category = calculateLoss(network, params)            # total loss with SINDy
@@ -349,7 +352,7 @@ def train(epoch):
         optimizer.step()
         
         # print progress
-        printProgress(epoch, batch_id, combined_loss)
+        # printProgress(epoch, batch_id, combined_loss)
         img = img.detach()
     print('\n')
     outputs.append((epoch, float(combined_loss), loss_category))
@@ -371,26 +374,28 @@ def evaluate():
     ae_lossE = 0
     sindy_lossE = 0
     for i, img in enumerate(validation_data):
+        img = img.cuda()
+
         # an other video sequence
         if i % params['batch_size'] == 0:
             # x, z are at the current time
             encode_eval_tensor, recon_eval_tensor = autoencoder(img, 0, mode='train')
-            evaluated_dict['x'] = float(recon_eval_tensor)
-            evaluated_dict['z'] = float(encode_eval_tensor)
-            eval_theta = torch.from_numpy(sindy.sindy_library(evaluated_dict['z'], params['poly_order'], include_sine=params['include_sine']))
-            evaluated_dict['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float()
+            evaluated_dict['x'] = recon_eval_tensor#.float()
+            evaluated_dict['z'] = encode_eval_tensor#.float()
+            eval_theta = torch.from_numpy(sindy.sindy_library(evaluated_dict['z'].cpu().detach().numpy(), params['poly_order'], include_sine=params['include_sine']))
+            evaluated_dict['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float().cuda()
             _, recon_sindy_eval_tensor = autoencoder(0, evaluated_dict['dz_sindy'], mode='test')
-            evaluated_dict['dx_sindy'] = float(recon_sindy_eval_tensor)
+            evaluated_dict['dx_sindy'] = recon_sindy_eval_tensor#.float()
             # autoencoder loss
             ae_lossE += float(F.mse_loss(evaluated_dict['x'], img))
         else:
             # sindy loss
             sindy_lossE += float(F.mse_loss(evaluated_dict['dx_sindy'], img))
             evaluated_dict['z'], evaluated_dict['x'] = autoencoder(img, 0, mode='train')            
-            eval_theta = torch.from_numpy(sindy.sindy_library(evaluated_dict['z'].detach().numpy(), params['poly_order'], include_sine=params['include_sine']))
-            evaluated_dict['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float()
+            eval_theta = torch.from_numpy(sindy.sindy_library(evaluated_dict['z'].cpu().detach().numpy(), params['poly_order'], include_sine=params['include_sine']))
+            evaluated_dict['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float().cuda()
             _, recon_sindy_eval_tensor = autoencoder(0, evaluated_dict['dz_sindy'], mode='test')
-            evaluated_dict['dx_sindy'] = float(recon_sindy_eval_tensor)
+            evaluated_dict['dx_sindy'] = recon_sindy_eval_tensor#.float()
             ae_lossE += float(F.mse_loss(evaluated_dict['x'], img))
     
     # append average loss of this epoch
@@ -403,14 +408,22 @@ def evaluate():
 # epoch loop
 for epoch in range(params['number_epoch']):
     train(epoch)
+    print('train epoch', epoch, 'done')
     evaluate()
+    print('evaluate epoch', epoch, 'done')
 
     if epoch % 100 == 0:
         # save model every 100 epoch
-        name_Ae = 'results/Ae_' + str(epoch) + 'epoch_bs64_lr0-1_z5_sindth0-5_poly5.pt'
-        name_Xi = 'results/Xi_' + str(epoch) + 'epoch_bs64_lr0-1_z5_sindth0-5_poly5.pt'
+        name_Ae = 'results/Ae_' + str(epoch) + 'epoch_bs8_lr0-1_z5_sindth0-5_poly5.pt'
+        name_Xi = 'results/Xi_' + str(epoch) + 'epoch_bs8_lr0-1_z5_sindth0-5_poly5.pt'
+        name_aeLoss = 'results/AeLoss_' + str(epoch) + 'epoch_bs8_lr0-1_z5_sindth0-5_poly5.pt'
+        name_sindyLoss = 'results/sindyLoss' + str(epoch) + 'epoch_bs8_lr0-1_z5_sindth0-5_poly5.pt'
+        name_outputs = 'results/trainOutput' + str(epoch) + 'epoch_bs8_lr0-1_z5_sindth0-5_poly5.pt'
         torch.save(autoencoder, name_Ae)
-        torch.save(autoencoder, name_Xi)
+        torch.save(network['Xi'], name_Xi)
+        torch.save(ae_loss, name_aeLoss)
+        torch.save(sindy_loss, name_sindyLoss)
+        torch.save(outputs, name_outputs)
+        print('saved model in epoch', epoch)
 
-
-torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
