@@ -1,1 +1,1 @@
-ref-names: HEAD -> master
+ref-names: $Format:%D$
