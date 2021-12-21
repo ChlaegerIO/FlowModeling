@@ -3,9 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
-#from torch.autograd import Variable
-#from torch.utils.data import DataLoader
-#from torch.utils.data import Dataset
 from torchvision import transforms
 # read videos
 from os import listdir
@@ -13,7 +10,7 @@ import cv2
 # others
 import os
 import random
-#import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 # SINDy
 import sys
 sys.path.append("src")
@@ -43,8 +40,11 @@ def printProgress(epoch, batch_id, loss):
             epoch+1, int(100. * (batch_id+1) / len(train_data)),progress, loss.item()), end='', flush = True)
         
 
-def calculateLoss(network, params):
+def networkLoss():
     """
+    needs:  network['dx'], network['dx_sindy'], network['dz'],  network['dz_sindy'], network['Xi'], network['ae_loss'], 
+            params['loss_weight_decoder'], params['loss_weight_sindy_x'], params['loss_weight_sindy_z'], params['loss_weight_sindy_regularization']
+
     calculate the loss of autoencoder and SINDy combined. loss function of:
     
      O \   _________           ________  /  O
@@ -60,12 +60,13 @@ def calculateLoss(network, params):
     dz = xGrad phi'(x) dx = (xGrad z) dx
     
     network: data of the network
-        network['dx'], network['dx_sindy'], network['dz'], network['dz_sindy'], network['Xi'], network['rec_loss']
+        network['dx'], network['dx_sindy'], network['dz'], network['dz_sindy'], network['Xi'], network['ae_loss']
     params: hyperparameters
     separate_loss: dict of loss
-        separate_loss['rec_loss'], separate_loss['sindy_x_loss'], separate_loss['sindy_z_loss'], separate_loss['sparse_loss']
+        separate_loss['ae_loss'], separate_loss['sindy_x_loss'], separate_loss['sindy_z_loss'], separate_loss['sparse_loss']
 
-    return summed_total_loss, separate_loss
+    return:  summed_total_loss
+            and saves separate loss in network['...']
     
     """
     dx = network['dx']
@@ -73,29 +74,31 @@ def calculateLoss(network, params):
     dz = network['dz']
     dz_sindy = network['dz_sindy']
     Xi_coeff = network['Xi']
-    rec_loss = network['rec_loss']
-    sindy_x_loss = torch.mean((dx-dx_sindy)**2)
-    sindy_z_loss = torch.mean((dz-dz_sindy)**2)
-    sparse_loss = torch.mean(torch.abs(Xi_coeff))
+    ae_loss = float(network['ae_loss'])
+    sindy_x_loss = float(torch.mean((dx-dx_sindy)**2))
+    sindy_z_loss = float(torch.mean((dz-dz_sindy)**2))
+    sparse_loss = float(torch.mean(torch.abs(Xi_coeff)))
     
     # separate view of each loss
-    separate_loss = {}
-    separate_loss['rec_loss'] = (float(rec_loss))
-    separate_loss['sindy_x_loss'] = (float(sindy_x_loss))
-    separate_loss['sindy_z_loss'] = (float(sindy_z_loss))
-    separate_loss['sparse_loss'] = (float(sparse_loss))
+    network['ae_loss'] = ae_loss
+    network['sindy_x_loss'] = sindy_x_loss
+    network['sindy_z_loss'] = sindy_z_loss
+    network['sparse_loss'] = sparse_loss
     
-    tot_loss = (params['loss_weight_decoder'] * rec_loss
+    tot_loss = (params['loss_weight_decoder'] * ae_loss
                 + params['loss_weight_sindy_x'] * sindy_x_loss 
                 + params['loss_weight_sindy_z'] * sindy_z_loss
                 + params['loss_weight_sindy_regularization'] * sparse_loss)
                                                                                         
-    return tot_loss, separate_loss
+    return tot_loss
 
 
-def calculateSindy(network, params):
+def calculateSindy():
     '''
-    Calculate Theta(z), Xi and dz
+    needs: network['z'], network['dz'], params['poly_order'], params['include_sine'], params['sindy_threshold']
+    Calculate Theta(z) and regress to get Xi and save it in network['...']
+
+    return: dz prediction
     
     '''
     z = network['z'].cpu().detach().numpy()
@@ -108,7 +111,6 @@ def calculateSindy(network, params):
     return dz_predict
 
 
-
 #############################################################################################################
 # define model parameters
 #############################################################################################################
@@ -116,18 +118,18 @@ def calculateSindy(network, params):
 params = {}
 
 # autoencoder settings
-params['number_epoch'] = 100                               # number of epochs
-params['z_dim'] = 5                                     # number of coordinates for SINDy
+params['number_epoch_ae'] = 5001                         # number of epochs only autoencoder
+params['number_epoch_sindy'] = 1000
+params['z_dim'] = 2                                     # number of coordinates for SINDy
 params['batch_size'] = 16                                # batch size
 params['lr_rate'] = 1e-5                                 # learning rate
-params['weight_decay'] = 0
-
+params['weight_decay'] = 0                               # weight decay for NN optimizer
 
 # loss function weighting
 params['loss_weight_decoder'] = 1.0
-params['loss_weight_sindy_x'] = 1e-4
-params['loss_weight_sindy_z'] = 1e-10
-params['loss_weight_sindy_regularization'] = 1e-4
+params['loss_weight_sindy_x'] = 1e-3
+params['loss_weight_sindy_z'] = 0
+params['loss_weight_sindy_regularization'] = 1e-6
 
 # SINDy parameters
 params['sindy_threshold'] = 0.5 
@@ -135,9 +137,8 @@ params['poly_order'] = 4
 params['include_sine'] = False
 
 # video processing
-path_train = 'Videos/train/'
-path_test = 'Videos/test/'
-path_autoencoder = 'results/Autoencoder_#epoch_v1.pt'
+path_train = '../../Videos/train/'
+path_autoencoder = 'results/v4_lre-5_z5_poly4/Ae_600epoch_bs16_lr1e-5_z5_sindth0-5_poly5.pt'
 
 
 #############################################################################################################
@@ -148,14 +149,16 @@ print('cuda available: ', torch.cuda.is_available())
 #print('cuda memory', torch.cuda.memory_summary(device=None, abbreviated=False))
 torch.cuda.empty_cache()
 
-
 # read the train videos in random order
 file_names = []
-for f in listdir(path_train):
-    if f != 'high_res':
-        file_names.append(f)
+# for f in listdir(path_train):
+#     if f != 'high_res':
+#         file_names.append(f)
 
-random.shuffle(file_names)
+# random.shuffle(file_names)
+
+# for testing purpose, only take one video
+file_names.append('Cu_2_Trim_low.mov')
 
 # define transform to tensor and resize to 1080x1920, 720x404 (16:9)
 # pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
@@ -169,8 +172,8 @@ train_data = []
 train_idxOfNewVideo = []
 count = 0
 for f in file_names:
-    if count == 3:
-        break
+    # if count == 3:
+    #     break
     count += 1
     train_idxOfNewVideo.append(len(train_data))
     vidcap = cv2.VideoCapture(path_train + f)
@@ -188,58 +191,79 @@ for f in file_names:
     
     print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
+vidcap.release()
+
 print('index of new videos: ', train_idxOfNewVideo)
 print('train data reading done!')
+
 
 # split into validation and training set
 validation_data = []
 # take 10% of training set batches to validation set, take always two
 nbr_batch = int(len(train_data)*0.1 / 2)
+# take first two frames of a video --> goal: no interruption of the video
 for i in range(0,nbr_batch):
     # choose position of train_idxOfNewVideo
     choose = random.randint(0, len(train_idxOfNewVideo)-1)
     whereInData = train_idxOfNewVideo[choose]
-    # take first two frames of a video --> goal: no interruption of the video
-    element1 = train_data[whereInData]
-    element2 = train_data[whereInData+1]
-    validation_data.append(element1)
-    validation_data.append(element2)
-    train_data.pop(whereInData+1)
-    train_data.pop(whereInData)
-    # adapt index where new videos start in train data
-    for j in range(choose+1, len(train_idxOfNewVideo)):
-        train_idxOfNewVideo[j] -= 2
+    # check if there are more than 3 batches of frames available
+    if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 3:
+        element1 = train_data[whereInData]
+        element2 = train_data[whereInData+1]
+        validation_data.append(element1)
+        validation_data.append(element2)
+        train_data.pop(whereInData+1)
+        train_data.pop(whereInData)
+        # adapt index where new videos start in train data
+        for j in range(choose+1, len(train_idxOfNewVideo)):
+            train_idxOfNewVideo[j] -= 2
 
 print('validation data construction done: ', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]))
 print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 print('index of new videos: ', train_idxOfNewVideo)
 
-# # read test videos
-# test_data = []
-# test_idxOfNewVideo = []
+# delete not used objects
+del train_data_tmp
 
-# # define transform to tensor and resize to 1080x1920, 720x404 (16:9)
-# # normalize = transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])    # normalize around mean with sigma (std)
-# # transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
-# transform = transforms.ToTensor()
 
-# # read data to list and transform to tensor
-# count = 0
-# for f in listdir(path_test):
-#     if f != 'high_res':
-#         count += 1
-#         test_idxOfNewVideo.append(len(test_data))
-#         vidcap = cv2.VideoCapture(path_test + f)
-#         success,imgR = vidcap.read()
-#         print('Read:',f)
-#         while success:
-#             imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
-#             imgR_tensor = transform(imgR)
-#             test_data.append(imgR_tensor)
-#             success,imgR = vidcap.read()
-        
-    
-# print('test data reading done: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
+# split into test set
+test_data = []
+# take 10% of training set batches to test set, take always two
+nbr_batch = int(len(train_data)*0.1 / 4)
+# take first two frames of a video --> goal: no interruption of the video
+for i in range(0,nbr_batch):
+    # choose position of train_idxOfNewVideo
+    choose = random.randint(0, len(train_idxOfNewVideo)-1)
+    whereInData = train_idxOfNewVideo[choose]
+    # check if there are more than 3 batches of frames available
+    if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 5:
+        element1 = train_data[whereInData]
+        element2 = train_data[whereInData+1]
+        element3 = train_data[whereInData+2]
+        element4 = train_data[whereInData+3]
+        test_data.append(element1)
+        test_data.append(element2)
+        test_data.append(element3)
+        test_data.append(element4)
+        train_data.pop(whereInData+3)
+        train_data.pop(whereInData+2)
+        train_data.pop(whereInData+1)
+        train_data.pop(whereInData)
+        # adapt index where new videos start in train data
+        for j in range(choose+1, len(train_idxOfNewVideo)):
+            train_idxOfNewVideo[j] -= 2
+
+print('test data construction done: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
+print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+
+
+# save training, validation and test data
+name_path = 'results/v5/data/'
+torch.save(train_data, name_path + 'train_data.pt')
+torch.save(validation_data, name_path + 'validation_data.pt')
+torch.save(test_data, name_path + 'test_data.pt')
+
+
 
 #############################################################################################################
 # autoencoder architecture
@@ -268,7 +292,8 @@ class Autoencoder(nn.Module):
             nn.Conv2d(150, 200, 9, stride=2), # N, 200, 8, 10
             nn.ReLU()
         )
-        
+
+        # TODO: Dopoutlayers --> in the end to fine tune
         self.fc1 = nn.Linear(200*8*10,params['z_dim'])
         # Note: nn.MaxPool2d -> use nn.MaxUnpool2d, or use different kernelsize, stride etc to compensate...
         # Input [-1, +1] -> use nn.Tanh    
@@ -303,7 +328,6 @@ class Autoencoder(nn.Module):
         
         '''
         if mode == 'train':
-            #print('train mode')
             encoded = self.encode(x)
             encoded = encoded.view(-1,200*8*10)
             encoded = self.fc1(encoded)
@@ -311,15 +335,17 @@ class Autoencoder(nn.Module):
             decoded = self.fc2(encoded)
             decoded = decoded.view(-1,200,8,10)
             decoded = self.decode(decoded)
-        else:
-            #print('test mode')
+        elif mode == 'test':
             encoded = torch.zeros(1)
 
             decoded = self.fc2(z)
             decoded = decoded.view(-1,200,8,10)
             decoded = self.decode(decoded)
+        else:
+            print(mode, 'is not an adequate in the forward path')
         
         return encoded, decoded
+
 
 #############################################################################################################
 # training loop
@@ -328,9 +354,11 @@ class Autoencoder(nn.Module):
 # # load model
 # if os.path.isfile(path_autoencoder):
 #     autoencoder = torch.load(path_autoencoder)
+#     autoencoder = autoencoder.cpu()
 #     print('loaded autoencoder', path_autoencoder)
 # else:
 #     autoencoder = Autoencoder()
+#     autoencoder = autoencoder.cpu()        # or .cuda()
 #     print('loaded new autoencoder')
 
 
@@ -391,70 +419,181 @@ def train(epoch):
     # delete from cuda
     # del encode_tensor
     # del recon_tensor
+# # load model
+# if os.path.isfile(path_autoencoder):
+#     autoencoder = torch.load(path_autoencoder)
+#     autoencoder = autoencoder.cpu()
+#     print('loaded autoencoder', path_autoencoder)
+# else:
+#     autoencoder = Autoencoder()
+#     autoencoder = autoencoder.cpu()        # or .cuda()
+#     print('loaded new autoencoder')
+
+
+# to save network data and initialize loss values
+network = {}
+network['combined_loss'] = 0
+network['sindy_x_loss'] = 0
+network['sindy_z_loss'] = 0
+network['sparse_loss'] = 0
+
+# training function
+def train(epoch, phase):
+    '''
+    training function for the autoencoder: 
+        use train_idxOfNewVideo to check if the current batch correspond to a new video
+
+    epoch: current epoch of learning
+    phase: 'autoencoder', 'sindy' --> first train only auto encoder (pretrain), then with the sindy loss terms
+
+    '''
+    # train only with autoencoder
+    if phase == 'autoencoder':
+        for batch_id, img_tensor in enumerate(train_data):
+            img_tensor = img_tensor#.cuda()
+            encode_tensor, recon_tensor = autoencoder(img_tensor, 0, mode='train')
+            network['ae_loss'] = criterion(recon_tensor, img_tensor)
+            network['combined_loss'] = network['ae_loss']
+            combined_loss = network['ae_loss']
+
+            # optimization step
+            optimizer.zero_grad()
+            combined_loss.backward()
+            optimizer.step()
+
+            # tensorboard
+            writer.add_scalar('Training loss per batch in autoencoder phase', combined_loss, global_step=step_train)
+            writer.add_histogram('fc1', autoencoder.fc1.weight)
+            step_train += 1
+
+            # printProgress(epoch, batch_id, combined_loss)
+            img_tensor = img_tensor.detach()
+    
+    # train with autoencoder and sindy
+    elif phase == 'sindy':
+        pos = 0
+        for batch_id, img_tensor in enumerate(train_data):
+            img_tensor = img_tensor#.cuda()
+            encode_tensor, recon_tensor = autoencoder(img_tensor, 0, mode='train')
+            network['ae_loss'] = criterion(recon_tensor, img_tensor)
+            
+            # x, z is current batch_id, dx, dz is next one (in else we take dz as current and compare with x from before, the excite to current step)
+            if batch_id == train_idxOfNewVideo[pos]:
+                pos += 1
+                combined_loss = network['ae_loss']       
+                network['z'] = encode_tensor#.float()
+            else:
+                network['dx'] = img_tensor#.float()
+                network['dz'] = encode_tensor#.float()
+                network['dz_sindy'] = calculateSindy().float()
+                _, network['dx_sindy'] = autoencoder(0, network['dz_sindy'], mode='test')
+                combined_loss = networkLoss()            # total loss with SINDy
+                # now advance one step
+                network['z'] = network['dz']
+                    
+            # optimization and backpropagation
+            optimizer.zero_grad()
+            combined_loss.backward()
+            optimizer.step()
+
+            # tensorboard
+            writer.add_scalar('Training loss per batch in sindy phase', combined_loss, global_step=step_train)
+            writer.add_histogram('fc1', autoencoder.fc1.weight)
+            step_train += 1
+
+            # printProgress(epoch, batch_id, combined_loss)
+            img_tensor = img_tensor.detach()
+    else:
+        print('No such training phase available:', phase)
+
+    
+    print('\n')
+
+    # hyperparametering with the last losses of the epoch
+    writer.add_hparams({'lr': lr_rate, 'zDimension': dimZ}, 
+           {'auto encoder loss': network['ae_loss'],'combined loss': network['combined_loss'], 'sindy x loss': network['sindy_x_loss'], 'sparsity loss': network['sparse_loss']})
+    
+    # delete from cuda
+    del encode_tensor
+    del recon_tensor
 
 
 # evaluation function
-evaluated_dict = {}
-final_combined_loss = []
-final_sindy_loss = []
-def evaluate():
+def evaluate(phase):
     '''
     evaluation of the training by it's loss
 
     '''
     autoencoder.eval()
-    evaluated_combined_loss = 0
-    evaluated_sindy_loss = 0
-    for i, img_tensor in enumerate(validation_data):
-        img_tensor = img_tensor.cuda()
-        encode_eval_tensor, recon_eval_tensor = autoencoder(img_tensor, 0, mode='train')
-        evaluated_dict['rec_loss'] = criterion(recon_eval_tensor, img_tensor)
-        print('i: ', i)
 
-        # first batch
-        if i % 2 == 0:
-            # x, z are at the current time
-            evaluated_dict['z'] = encode_eval_tensor#.float()
-            
-        # second batch, evaluation
-        else:
-            evaluated_dict['dx'] = img_tensor#.float()
-            evaluated_dict['dz'] = encode_eval_tensor#.float()
-            eval_theta = torch.from_numpy(sindy.sindy_library(evaluated_dict['z'].cpu().detach().numpy(), params['poly_order'], include_sine=params['include_sine']))
-            evaluated_dict['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float().cuda()
-            
-            evaluated_dict['Xi'] = network['Xi']
-            _, evaluated_dict['dx_sindy'] = autoencoder(0, evaluated_dict['dz_sindy'], mode='test')
-            combined_loss, loss_category = calculateLoss(evaluated_dict, params)            # total loss with SINDy
+    # train only with autoencoder
+    if phase == 'autoencoder':
+        evaluated_combined_loss = 0
+        for i, img_tensor in enumerate(validation_data):
+            img_tensor = img_tensor#.cuda()
+            encode_eval_tensor, recon_eval_tensor = autoencoder(img_tensor, 0, mode='train')
+            network['ae_loss'] = criterion(recon_eval_tensor, img_tensor)
+            evaluated_combined_loss += network['ae_loss']
 
-            # loss
-            evaluated_combined_loss += combined_loss
-            evaluated_sindy_loss += loss_category['sindy_x_loss']
-    
-    # append average loss of this epoch
-    evaluated_combined_loss_perData = evaluated_combined_loss/len(validation_data)*2
-    evaluated_sindy_loss_perData = evaluated_sindy_loss/len(validation_data)*2
-    final_combined_loss.append(evaluated_combined_loss_perData)
-    final_sindy_loss.append(evaluated_sindy_loss_perData)
-    writer.add_scalar('Evaluation combined loss per epoch', evaluated_combined_loss_perData, global_step=step_eval)
-    writer.add_scalar('Evaluation sindy loss per epoch', evaluated_sindy_loss_perData, global_step=step_eval)
-    step_eval += 1
+        # append average loss of this epoch
+        evaluated_combined_loss_perData = evaluated_combined_loss/len(validation_data)
+        writer.add_scalar('Evaluation combined loss per epoch in autoencoder phase', evaluated_combined_loss_perData, global_step=step_eval)
+        step_eval += 1
 
-    # del encode_eval_tensor
-    # del recon_eval_tensor
-    # del recon_sindy_eval_tensor
+    # train with autoencoder and sindy
+    elif phase == 'sindy':
+        evaluated_combined_loss = 0
+        evaluated_sindy_loss = 0
+        for i, img_tensor in enumerate(validation_data):
+            img_tensor = img_tensor#.cuda()
+            encode_eval_tensor, recon_eval_tensor = autoencoder(img_tensor, 0, mode='train')
+            network['ae_loss'] = criterion(recon_eval_tensor, img_tensor)
+
+            # first batch
+            if i % 2 == 0:
+                # x, z are at the current time
+                network['z'] = encode_eval_tensor#.float()
+                
+            # second batch, evaluation
+            else:
+                network['dx'] = img_tensor#.float()
+                network['dz'] = encode_eval_tensor#.float()
+                eval_theta = torch.from_numpy(sindy.sindy_library(network['z'].cpu().detach().numpy(), params['poly_order'], include_sine=params['include_sine']))
+                network['dz_sindy'] = torch.matmul(eval_theta,network['Xi']).float()#.cuda()
+                
+                _, network['dx_sindy'] = autoencoder(0, network['dz_sindy'], mode='test')
+                combined_loss = networkLoss()            # total loss with SINDy
+
+                # loss
+                evaluated_combined_loss += combined_loss
+                evaluated_sindy_loss += network['sindy_x_loss']
+        
+        # append average loss of this epoch
+        evaluated_combined_loss_perData = evaluated_combined_loss/len(validation_data)*2
+        evaluated_sindy_loss_perData = evaluated_sindy_loss/len(validation_data)*2
+        writer.add_scalar('Evaluation combined loss per epoch in sindy phase', evaluated_combined_loss_perData, global_step=step_eval)
+        writer.add_scalar('Evaluation sindy x loss per epoch in sindy phase', evaluated_sindy_loss_perData, global_step=step_eval)
+        step_eval += 1
+    else:
+        print('No such evaluation phase available:', phase)
+
+
+    del encode_eval_tensor
+    del recon_eval_tensor
 
 
 
 # print to tensorboard and hyperparameter search
-lr_rate_arr = [0.01, 0.001, 0.0001, 0.00001]
-dim_z_arr = [1, 2, 3, 10, 100, 1000]
+# lr_rate_arr = [0.01, 0.001, 0.0001, 0.00001]
+# dim_z_arr = [1, 2, 3, 5, 10, 20]
+lr_rate_arr = [params['lr_rate']]
+dim_z_arr = [params['z_dim']]
 
 for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v4Tensorboard/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v5Tensorboard/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         step_train = 0
         step_eval = 0
 
@@ -466,18 +605,27 @@ for lr_rate in lr_rate_arr:
         optimizer = torch.optim.Adam(autoencoder.parameters(), lr=params['lr_rate'], weight_decay=params['weight_decay'])
 
         # epoch loop
-        for epoch in range(params['number_epoch']):
-            train(epoch)
-            print('train epoch', epoch, 'done')
-            evaluate()
-            print('evaluate epoch', epoch, 'done')
+        for epoch in range(params['number_epoch_ae'] + params['number_epoch_sindy']):
+            # first train only autoencoder
+            if epoch < params['number_epoch_ae']:
+                train(epoch, phase='autoencoder')
+                print('train epoch', epoch, 'in phase autoencoder done')
+                evaluate(phase='autoencoder')
+                print('evaluate epoch', epoch, 'in phase autoencoder done')
+            # afterwards train network with sindy
+            else:
+                train(epoch, phase='sindy')
+                print('train epoch', epoch, 'in phase sindy done')
+                evaluate(phase='sindy')
+                print('evaluate epoch', epoch, 'in phase sindy done')
 
-            # save model every 100 epoch
-            if epoch % 50 == 0:
-                name_Ae = 'results/Ae_' + str(epoch) + 'epoch_bs16_lr{lr_rate}_z{dimZ}_sindth0-5_poly5.pt'
-                name_Xi = 'results/Xi_' + str(epoch) + 'epoch_bs16_lr{lr_rate}_z{dimZ}_sindth0-5_poly5.pt'
+            # save model every 1000 epoch
+            if epoch % 1000 == 0:
+                name_Ae = 'results/v5/Ae_' + str(epoch) + 'epoch_bs16_lr{lr_rate}_z{dimZ}_sindt05_poly5.pt'
+                name_Xi = 'results/v5/Xi_' + str(epoch) + 'epoch_bs16_lr{lr_rate}_z{dimZ}_sindth05_poly5.pt'
                 torch.save(autoencoder, name_Ae)
                 torch.save(network['Xi'], name_Xi)
                 print('saved model in epoch', epoch)
 
     torch.cuda.empty_cache()
+
