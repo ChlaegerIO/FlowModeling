@@ -11,7 +11,7 @@ ode_options = odeset('RelTol',1e-10, 'AbsTol',1e-11);
 
 input=[]; output=[];
 for j=1:100  % training trajectories
-    x0=30*(rand(3,1)-0.5);
+    x0=80*(rand(3,1)-0.5);
     [t,y] = ode45(Lorenz,t,x0);
     input=[input; y(1:end-1,:)];
     output=[output; y(2:end,:)];
@@ -30,7 +30,7 @@ net = train(net,input.',output.');
 
 %%
 figure(2)
-x0=20*(rand(3,1)-0.5);
+x0=80*(rand(3,1)-0.5);
 [t,y] = ode45(Lorenz,t,x0);
 plot3(y(:,1),y(:,2),y(:,3)), hold on
 plot3(x0(1),x0(2),x0(3),'ro','Linewidth',[2])
