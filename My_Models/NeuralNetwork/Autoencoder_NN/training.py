@@ -74,16 +74,16 @@ def networkLoss():
     dz = network['dz']
     dz_sindy = network['dz_sindy']
     Xi_coeff = network['Xi']
-    ae_loss = float(network['ae_loss'])
-    sindy_x_loss = float(torch.mean((dx-dx_sindy)**2))
-    sindy_z_loss = float(torch.mean((dz-dz_sindy)**2))
-    sparse_loss = float(torch.mean(torch.abs(Xi_coeff)))
+    ae_loss = network['ae_loss']
+    sindy_x_loss = torch.mean((dx-dx_sindy)**2)   # no float here!
+    sindy_z_loss = torch.mean((dz-dz_sindy)**2)
+    sparse_loss = torch.mean(torch.abs(Xi_coeff))
     
     # separate view of each loss
-    network['ae_loss'] = ae_loss
-    network['sindy_x_loss'] = sindy_x_loss
-    network['sindy_z_loss'] = sindy_z_loss
-    network['sparse_loss'] = sparse_loss
+    network['ae_loss'] = float(ae_loss)
+    network['sindy_x_loss'] = float(sindy_x_loss)
+    network['sindy_z_loss'] = float(sindy_z_loss)
+    network['sparse_loss'] = float(sparse_loss)
     
     tot_loss = (params['loss_weight_decoder'] * ae_loss
                 + params['loss_weight_sindy_x'] * sindy_x_loss 
@@ -117,9 +117,9 @@ def calculateSindy():
 
 params = {}
 
-# autoencoder settings
-params['number_epoch_ae'] = 5001                         # number of epochs only autoencoder
-params['number_epoch_sindy'] = 1000
+# TODO: autoencoder settings
+params['number_epoch_ae'] = 3001                         # number of epochs only autoencoder
+params['number_epoch_sindy'] = 300
 params['z_dim'] = 2                                     # number of coordinates for SINDy
 params['batch_size'] = 16                                # batch size
 params['lr_rate'] = 1e-5                                 # learning rate
@@ -127,7 +127,7 @@ params['weight_decay'] = 0                               # weight decay for NN o
 
 # loss function weighting
 params['loss_weight_decoder'] = 1.0
-params['loss_weight_sindy_x'] = 1e-3
+params['loss_weight_sindy_x'] = 1.0
 params['loss_weight_sindy_z'] = 0
 params['loss_weight_sindy_regularization'] = 1e-6
 
@@ -280,7 +280,7 @@ print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0])
 
 
 # save training, validation and test data
-name_path = 'results/v5/data/'
+name_path = 'results/v5_3/data/'
 torch.save(train_data, name_path + 'train_data.pt')
 torch.save(validation_data, name_path + 'validation_data.pt')
 torch.save(test_data, name_path + 'test_data.pt')
@@ -416,7 +416,7 @@ def train(epoch, steps, phase):
             optimizer.step()
 
             # tensorboard
-            writer.add_scalar('Training loss per batch in autoencoder phase', combined_loss, global_step=step_train)
+            writer.add_scalar('Training loss per batch in autoencoder phase', combined_loss, global_step=steps)
             writer.add_histogram('fc1', autoencoder.fc1.weight)
             steps += 1
 
@@ -434,6 +434,8 @@ def train(epoch, steps, phase):
             # x, z is current batch_id, dx, dz is next one (in else we take dz as current and compare with x from before, the excite to current step)
             if batch_id == train_idxOfNewVideo[pos]:
                 pos += 1
+                if pos == len(train_idxOfNewVideo):
+                    pos = 0
                 combined_loss = network['ae_loss']       
                 network['z'] = encode_tensor#.float()
             else:
@@ -541,9 +543,9 @@ def evaluate(steps, phase):
 
 
 
-# print to tensorboard and hyperparameter search
-# lr_rate_arr = [0.01, 0.001, 0.0001, 0.00001]
-# dim_z_arr = [1, 2, 3, 5, 10, 20]
+# TODO: print to tensorboard and hyperparameter search
+# lr_rate_arr = [0.00001,0.001, 0.1]
+# dim_z_arr = [1, 2, 3, 5, 10]
 lr_rate_arr = [params['lr_rate']]
 dim_z_arr = [params['z_dim']]
 
@@ -551,12 +553,14 @@ for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v5Tensorboard/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v5Tensorboard_3/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         
 
         # load new network
         autoencoder = Autoencoder()
         autoencoder = autoencoder.cuda()
+        print('initialized new autoencoder')
+        
         # optimization technique
         criterion = nn.MSELoss()
         optimizer = torch.optim.Adam(autoencoder.parameters(), lr=params['lr_rate'], weight_decay=params['weight_decay'])
@@ -578,13 +582,14 @@ for lr_rate in lr_rate_arr:
                 step_eval = evaluate(step_eval, phase='sindy')
                 print('evaluate epoch', epoch, 'in phase sindy done')
 
-            # save model every 1000 epoch
-            if epoch % 1000 == 0:
-                name_Ae = 'results/v5/Ae_' + str(epoch) + 'epoch_bs16_lr{lr_rate}_z{dimZ}_sindt05_poly5.pt'
-                name_Xi = 'results/v5/Xi_' + str(epoch) + 'epoch_bs16_lr{lr_rate}_z{dimZ}_sindth05_poly5.pt'
+            # TODO: save model every 1000 epoch
+            if epoch % 1000 == 0 or epoch > 3000 and epoch % 50 == 0:
+                name_Ae = 'results/v5_3/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly5.pt'
+                name_Xi = 'results/v5_3/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly5.pt'
                 torch.save(autoencoder, name_Ae)
-                if epoch > params['number_epoch_ae']:
+                if epoch > 3000:
                     torch.save(network['Xi'], name_Xi)
+                                  
                 print('saved model in epoch', epoch)
 
     torch.cuda.empty_cache()
