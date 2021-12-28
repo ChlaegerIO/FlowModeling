@@ -11,6 +11,7 @@ import cv2
 import os
 import random
 # import matplotlib.pyplot as plt
+from datetime import datetime
 # SINDy
 import sys
 sys.path.append("src")
@@ -142,6 +143,8 @@ path_autoencoder = 'results/v4_lre-5_z5_poly4/Ae_600epoch_bs16_lr1e-5_z5_sindt05
 
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
 print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'])
+print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
 
 #############################################################################################################
 # data preprocessing
@@ -616,3 +619,4 @@ for lr_rate in lr_rate_arr:
     torch.cuda.empty_cache()
 
 print('training finished!')
+print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
