@@ -32,7 +32,7 @@ net = train(net,input.',output.');
 figure(2)
 x0=80*(rand(3,1)-0.5);
 [t,y] = ode45(Lorenz,t,x0);
-plot3(y(:,1),y(:,2),y(:,3)), hold on
+plot3(y(:,1),y(:,2),y(:,3),'Linewidth',[1],'Color',[0,0.47,0.07]), hold on
 plot3(x0(1),x0(2),x0(3),'ro','Linewidth',[2])
 grid on
 
@@ -41,7 +41,7 @@ for jj=2:length(t)
     y0=net(x0);
     ynn(jj,:)=y0.'; x0=y0;
 end
-plot3(ynn(:,1),ynn(:,2),ynn(:,3),':','Linewidth',[2])
+plot3(ynn(:,1),ynn(:,2),ynn(:,3),':','Linewidth',[2.5],'Color',[0.55,0.72,0.56])
 
 figure(3)
 subplot(3,2,1), plot(t,y(:,1),t,ynn(:,1),'Linewidth',[2])
@@ -52,7 +52,7 @@ subplot(3,2,5), plot(t,y(:,3),t,ynn(:,3),'Linewidth',[2])
 figure(2)
 x0=20*(rand(3,1)-0.5);
 [t,y] = ode45(Lorenz,t,x0);
-plot3(y(:,1),y(:,2),y(:,3)), hold on
+plot3(y(:,1),y(:,2),y(:,3),'Linewidth',[1], 'Color',[0.89,0.58,0]), hold on
 plot3(x0(1),x0(2),x0(3),'ro','Linewidth',[2])
 grid on
 
@@ -61,7 +61,7 @@ for jj=2:length(t)
     y0=net(x0);
     ynn(jj,:)=y0.'; x0=y0;
 end
-plot3(ynn(:,1),ynn(:,2),ynn(:,3),':','Linewidth',[2])
+plot3(ynn(:,1),ynn(:,2),ynn(:,3),':','Linewidth',[2.5],'Color',[0.89,0.83,0.58])
 
 figure(3)
 subplot(3,2,2), plot(t,y(:,1),t,ynn(:,1),'Linewidth',[2])
