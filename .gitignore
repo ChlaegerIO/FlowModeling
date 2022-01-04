@@ -5,6 +5,7 @@
 *.asv
 *.mat
 *.pt
+*.0
 
 # ignore folders
 My_Models/NeuralNetwork/Lib/
