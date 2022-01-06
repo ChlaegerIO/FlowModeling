@@ -1,0 +1,1 @@
+Xi has all coefficients equal to 0 --> lower threshhold
