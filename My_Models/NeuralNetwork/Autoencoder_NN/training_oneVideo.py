@@ -122,7 +122,7 @@ params = {}
 # TODO: autoencoder settings
 params['number_epoch_ae'] = 5001                         # number of epochs only autoencoder
 params['number_epoch_sindy'] = 5001
-params['z_dim'] = 3                                     # number of coordinates for SINDy
+params['z_dim'] = 1                                     # number of coordinates for SINDy
 params['batch_size'] = 16                                # batch size
 params['lr_rate'] = 1e-5                                 # learning rate
 params['weight_decay'] = 1e-9                            # weight decay for NN optimizer
@@ -130,17 +130,17 @@ params['weight_decay'] = 1e-9                            # weight decay for NN o
 # loss function weighting
 params['loss_weight_decoder'] = 1.0
 params['loss_weight_sindy_x'] = 1.0
-params['loss_weight_sindy_z'] = 0
+params['loss_weight_sindy_z'] = 0.5
 params['loss_weight_sindy_regularization'] = 1e-6
 
 # SINDy parameters
-params['sindy_threshold'] = 0.1 
-params['poly_order'] = 5
-params['include_sine'] = False
+params['sindy_threshold'] = 0.05 
+params['poly_order'] = 4
+params['include_sine'] = True
 
 # video processing
 path_train = 'Videos/train/'
-path_autoencoder = 'results/v5_3_z3_newSindy/Ae_3000epoch_bs16_lr1e-05_z3_sindt01_poly5.pt'
+path_autoencoder = 'results/v1_3_z3_newSindy/'
 
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
 print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'])
@@ -165,7 +165,7 @@ file_names = []
 # random.shuffle(file_names)
 
 # for testing purpose, only take one video
-file_names.append('Ac_Nov1_low.mov')
+file_names.append('Cu_2_Trim_low.mov')
 
 # define transform to tensor and resize to 1080x1920, 720x404 (16:9)
 # pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
@@ -288,7 +288,7 @@ print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0])
 
 
 # save training, validation and test data
-name_path = 'results/v6_z3/data/'
+name_path = 'results/v6_z1_s_zLoss_sin/data/'
 torch.save(train_data, name_path + 'train_data.pt')
 torch.save(validation_data, name_path + 'validation_data.pt')
 torch.save(test_data, name_path + 'test_data.pt')
@@ -428,7 +428,7 @@ def train(epoch, steps, phase):
             img_tensor = img_tensor.cuda()
             encode_tensor, recon_tensor = autoencoder(img_tensor, 0, mode='train')
             network['ae_loss'] = criterion(recon_tensor, img_tensor)
-            z_tensor_tmp = np.concatenate((z_tensor_tmp, encode_tensor.cpu().detach().numpy().float()), 0)        # save all z-states for Xi calculation
+            z_tensor_tmp = np.concatenate((z_tensor_tmp, encode_tensor.float().cpu().detach().numpy()), 0)        # save all z-states for Xi calculation
             
             # spacial case for first sindy epoch, we have no Xi yet
             if epoch == params['number_epoch_ae']:
@@ -464,9 +464,10 @@ def train(epoch, steps, phase):
             img_tensor = img_tensor.detach()
           
         # tensorboard for z coordinates
-        for dim in range(params['z_dim']):
-            for i in range(len(z_tensor_tmp)):
-                writer.add_scalar(f'z coordinate curve step{steps}', float(z_tensor_tmp[i,dim]), i)
+        if epoch % 2000 == 0:
+            for dim in range(params['z_dim']):
+                for i in range(len(z_tensor_tmp)):
+                    writer.add_scalar(f'z coordinate curve step{steps}', float(z_tensor_tmp[i,dim]), i)
         
         # calculate Xi for the hole batch
         dz_tensor_tmp = z_tensor_tmp[16:len(z_tensor_tmp)]
@@ -558,9 +559,6 @@ def evaluate(steps, phase):
 
 
 
-# TODO: print to tensorboard and hyperparameter search
-# lr_rate_arr = [0.00001,0.001, 0.1]
-# dim_z_arr = [1, 2, 3, 5, 10]
 lr_rate_arr = [params['lr_rate']]
 dim_z_arr = [params['z_dim']]
 
@@ -568,13 +566,13 @@ for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v6Tboard_z3/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v6Tboard_z1_s_zLoss_sin/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         
         # load new network
-        if os.path.isfile(path_autoencoder):
-            autoencoder = torch.load(path_autoencoder)
+        if os.path.isfile(path_autoencoder + f'Ae_3000epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly4.pt'):
+            autoencoder = torch.load(path_autoencoder + f'Ae_3000epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly4.pt')
             autoencoder = autoencoder.cuda()
-            print('loaded autoencoder', path_autoencoder)
+            print('loaded autoencoder', path_autoencoder + f'Ae_3000epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly4.pt')
         else:
             autoencoder = Autoencoder()
             autoencoder = autoencoder.cuda()
@@ -603,9 +601,9 @@ for lr_rate in lr_rate_arr:
                 print('evaluate epoch', epoch, 'in phase sindy done')
 
             # TODO: save model every 1000 epoch
-            if epoch % 1000 == 0 or epoch > params['number_epoch_ae'] and epoch % 500 == 0:
-                name_Ae = 'results/v6_z3/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt01_poly5.pt'
-                name_Xi = 'results/v6_z3//Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt01_poly5.pt'
+            if epoch % 2500 == 0 or epoch > params['number_epoch_ae'] and epoch % 2500 == 0:
+                name_Ae = 'results/v6_z1_s_zLoss_sin/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
+                name_Xi = 'results/v6_z1_s_zLoss_sin/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
                 torch.save(autoencoder, name_Ae)
                 if epoch > params['number_epoch_ae']:
                     torch.save(network['Xi'], name_Xi)
