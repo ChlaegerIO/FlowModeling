@@ -139,9 +139,10 @@ params['sindy_threshold'] = 0.05
 params['poly_order'] = 4
 params['include_sine'] = True
 
-# video processing
+# video processing paths
 path_train = 'Videos/train/'
 path_autoencoder = 'results/tmp/'
+path_savedData = 'results/v6_z3_s_zLoss_sin/data/'
 
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
 print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'])
@@ -292,15 +293,14 @@ if params['bool_loadNewData'] == True:
 
 
     # save training, validation and test data
-    name_path = 'results/v6_z3_s_zLoss_sin/data/'
-    torch.save(train_data, name_path + 'train_data.pt')
-    torch.save(train_idxOfNewVideo, path_toSave + 'train_idxOfNewVideo.pt')
-    torch.save(validation_data, name_path + 'validation_data.pt')
-    torch.save(test_data, name_path + 'test_data.pt')
+    torch.save(train_data, path_savedData + 'train_data.pt')
+    torch.save(train_idxOfNewVideo, path_savedData + 'train_idxOfNewVideo.pt')
+    torch.save(validation_data, path_savedData + 'validation_data.pt')
+    torch.save(test_data, path_savedData + 'test_data.pt')
 
 else:
-    train_data = torch.load(path_toSave + 'train_data.pt')
-    validation_data = torch.load(path_toSave + 'validation_data.pt')
+    train_data = torch.load(path_savedData + 'train_data.pt')
+    validation_data = torch.load(path_savedData + 'validation_data.pt')
     print('loaded previous train data done!', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
     print('loaded previous validation data done!', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]), len(validation_data[0][0][0][0]))
 
