@@ -145,6 +145,8 @@ path_autoencoder = 'results/v1_3_z3_newSindy/'
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
 print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'])
 print('With: encoded = torch.sigmoid(self.fc1(encoded))')
+print('auto encoder potentially from path: ', path_autoencoder)
+print('ae epoch number: ', params['number_epoch_ae'], 'sindy epoch number: ', params['number_epoch_sindy'])
 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 

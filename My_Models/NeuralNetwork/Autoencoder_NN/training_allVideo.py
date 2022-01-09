@@ -120,9 +120,10 @@ def calculateSindy():
 params = {}
 
 # TODO: autoencoder settings
-params['number_epoch_ae'] = 5001                         # number of epochs only autoencoder
-params['number_epoch_sindy'] = 5001
-params['z_dim'] = 1                                     # number of coordinates for SINDy
+params['number_epoch_ae'] = 801                         # number of epochs only autoencoder
+params['number_epoch_sindy'] = 0
+params['bool_loadNewData'] = True                       # if True load new data, if false load data from previous training
+params['z_dim'] = 3                                     # number of coordinates for SINDy
 params['batch_size'] = 16                                # batch size
 params['lr_rate'] = 1e-5                                 # learning rate
 params['weight_decay'] = 1e-9                            # weight decay for NN optimizer
@@ -140,11 +141,13 @@ params['include_sine'] = True
 
 # video processing
 path_train = 'Videos/train/'
-path_autoencoder = 'results/v1_3_z3_newSindy/'
+path_autoencoder = 'results/tmp/'
 
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
 print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'])
 print('With: encoded = torch.sigmoid(self.fc1(encoded))')
+print('auto encoder potentially from path: ', path_autoencoder)
+print('ae epoch number: ', params['number_epoch_ae'], 'sindy epoch number: ', params['number_epoch_sindy'])
 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
@@ -153,103 +156,124 @@ print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 #############################################################################################################
 torch.cuda.empty_cache()
 
-# read the train videos in random order
-file_names = []
-for f in listdir(path_train):
-    if f != 'high_res':
-        file_names.append(f)
+# In the first training phase load new data, in a second training phase use the same train, evaluate and test data set
+if params['bool_loadNewData'] == True:
+    print('loaded new data directly from videos')
 
-random.shuffle(file_names)
+    # read the train videos in random order
+    file_names = []
+    for f in listdir(path_train):
+        if f != 'high_res':
+            file_names.append(f)
 
-# define transform to tensor and resize to 1080x1920, 720x404 (16:9)
-# pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
-# normalize = transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])    # normalize around mean with sigma (std)
-# transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
-transform = transforms.ToTensor()
+    random.shuffle(file_names)
 
-# read data to list and transform to tensor
-train_data_tmp = []
-train_data = []
-train_idxOfNewVideo = []
-count = 0
-for f in file_names:
-    # if count == 3:
-    #     break
-    count += 1
-    train_idxOfNewVideo.append(len(train_data))
-    vidcap = cv2.VideoCapture(path_train + f)
-    success,imgR = vidcap.read()
-    print('Read training data:',f)
-    while success:
-        imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
-        imgR_tensor = transform(imgR)
-        train_data_tmp.append(imgR_tensor)
+    # define transform to tensor and resize to 1080x1920, 720x404 (16:9)
+    # pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
+    # normalize = transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])    # normalize around mean with sigma (std)
+    # transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
+    transform = transforms.ToTensor()
+
+    # read data to list and transform to tensor
+    train_data_tmp = []
+    train_data = []
+    train_idxOfNewVideo = []
+    count = 0
+    for f in file_names:
+        # if count == 3:
+        #     break
+        count += 1
+        train_idxOfNewVideo.append(len(train_data))
+        vidcap = cv2.VideoCapture(path_train + f)
         success,imgR = vidcap.read()
-        # make a batch
-        if len(train_data_tmp) >= params['batch_size']:
-            train_data.append(torch.stack(train_data_tmp))
-            del train_data_tmp
-            train_data_tmp = []
+        print('Read training data:',f)
+        while success:
+            imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
+            imgR_tensor = transform(imgR)
+            train_data_tmp.append(imgR_tensor)
+            success,imgR = vidcap.read()
+            # make a batch
+            if len(train_data_tmp) >= params['batch_size']:
+                train_data.append(torch.stack(train_data_tmp))
+                del train_data_tmp
+                train_data_tmp = []
 
-    print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+        print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
-vidcap.release()
+    vidcap.release()
 
-print('index of new videos: ', train_idxOfNewVideo)
-print('train data reading done!')
+    print('index of new videos: ', train_idxOfNewVideo)
+    print('train data reading done!')
 
 
-# split into validation and training set
-validation_data = []
-# take 10% of training set batches to validation set, take always two (totally ca. 1000 batches / 22 videos == 45 batches/video)
-nbr_batch = int(len(train_data)*0.1 / 2) + 1
-# take first two frames of a video --> goal: no interruption of the video
-for i in range(0,nbr_batch):
-    # choose random position of train_idxOfNewVideo
-    choose = random.randint(0, len(train_idxOfNewVideo)-1)
-    whereInData = train_idxOfNewVideo[choose]
-    # more than one video
-    if len(train_idxOfNewVideo) > 1:
-        # check if there are more than 3 batches of frames available
-        if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 3:
+    # split into validation and training set
+    validation_data = []
+    # take 10% of training set batches to validation set, take always two (totally ca. 1000 batches / 22 videos == 45 batches/video)
+    nbr_batch = int(len(train_data)*0.09 / 2) + 1
+    # take first two frames of a video --> goal: no interruption of the video
+    for i in range(0,nbr_batch):
+        # choose random position of train_idxOfNewVideo
+        choose = random.randint(0, len(train_idxOfNewVideo)-1)
+        whereInData = train_idxOfNewVideo[choose]
+        # more than one video
+        if len(train_idxOfNewVideo) > 1 and choose+1 < len(train_idxOfNewVideo):
+            # check if there are more than 3 batches of frames available
+            if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 3:
+                element1 = train_data[whereInData]
+                element2 = train_data[whereInData+1]
+                validation_data.append(element1)
+                validation_data.append(element2)
+                train_data.pop(whereInData+1)
+                train_data.pop(whereInData)
+                # adapt index where new videos start in train data
+                for j in range(choose+1, len(train_idxOfNewVideo)):
+                    train_idxOfNewVideo[j] -= 2
+        # only one video
+        elif len(train_data) > 3:
             element1 = train_data[whereInData]
             element2 = train_data[whereInData+1]
             validation_data.append(element1)
             validation_data.append(element2)
             train_data.pop(whereInData+1)
             train_data.pop(whereInData)
-            # adapt index where new videos start in train data
-            for j in range(choose+1, len(train_idxOfNewVideo)):
-                train_idxOfNewVideo[j] -= 2
-    # only one video
-    elif len(train_data) > 3:
-        element1 = train_data[whereInData]
-        element2 = train_data[whereInData+1]
-        validation_data.append(element1)
-        validation_data.append(element2)
-        train_data.pop(whereInData+1)
-        train_data.pop(whereInData)
 
-print('validation data construction done: ', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]))
-print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
-print('index of new videos: ', train_idxOfNewVideo)
+    print('validation data construction done: ', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]))
+    print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+    print('index of new videos: ', train_idxOfNewVideo)
 
-# delete not used objects
-del train_data_tmp
+    # delete not used objects
+    del train_data_tmp
 
 
-# split into test set
-test_data = []
-# take 10% of training set batches to test set, mimimum four
-nbr_batch = int(len(train_data)*0.1 / 4) + 1
-# take first four frames of a video --> goal: no interruption of the video
-for i in range(0,nbr_batch):
-    # choose position of train_idxOfNewVideo
-    choose = random.randint(0, len(train_idxOfNewVideo)-1)
-    whereInData = train_idxOfNewVideo[choose]
-    if len(train_idxOfNewVideo) > 1:    
-        # check if there are more than 5 batches of frames available --> 2 left
-        if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 5:
+    # split into test set
+    test_data = []
+    # take 10% of training set batches to test set, mimimum four
+    nbr_batch = int(len(train_data)*0.1 / 4) + 1
+    # take first four frames of a video --> goal: no interruption of the video
+    for i in range(0,nbr_batch):
+        # choose position of train_idxOfNewVideo
+        choose = random.randint(0, len(train_idxOfNewVideo)-1)
+        whereInData = train_idxOfNewVideo[choose]
+        if len(train_idxOfNewVideo) > 1 and choose+1 < len(train_idxOfNewVideo):    
+            # check if there are more than 5 batches of frames available --> 2 left
+            if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 5:
+                element1 = train_data[whereInData]
+                element2 = train_data[whereInData+1]
+                element3 = train_data[whereInData+2]
+                element4 = train_data[whereInData+3]
+                test_data.append(element1)
+                test_data.append(element2)
+                test_data.append(element3)
+                test_data.append(element4)
+                train_data.pop(whereInData+3)
+                train_data.pop(whereInData+2)
+                train_data.pop(whereInData+1)
+                train_data.pop(whereInData)
+                # adapt index where new videos start in train data
+                for j in range(choose+1, len(train_idxOfNewVideo)):
+                    train_idxOfNewVideo[j] -= 2
+        # only one video
+        elif len(train_data) > 5:
             element1 = train_data[whereInData]
             element2 = train_data[whereInData+1]
             element3 = train_data[whereInData+2]
@@ -262,33 +286,23 @@ for i in range(0,nbr_batch):
             train_data.pop(whereInData+2)
             train_data.pop(whereInData+1)
             train_data.pop(whereInData)
-            # adapt index where new videos start in train data
-            for j in range(choose+1, len(train_idxOfNewVideo)):
-                train_idxOfNewVideo[j] -= 2
-    # only one video
-    elif len(train_data) > 5:
-        element1 = train_data[whereInData]
-        element2 = train_data[whereInData+1]
-        element3 = train_data[whereInData+2]
-        element4 = train_data[whereInData+3]
-        test_data.append(element1)
-        test_data.append(element2)
-        test_data.append(element3)
-        test_data.append(element4)
-        train_data.pop(whereInData+3)
-        train_data.pop(whereInData+2)
-        train_data.pop(whereInData+1)
-        train_data.pop(whereInData)
 
-print('test data construction done: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
-print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+    print('test data construction done: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
+    print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
 
-# save training, validation and test data
-name_path = 'results/v6_z3_allVideo_s_zLoss_sin/data/'
-torch.save(train_data, name_path + 'train_data.pt')
-torch.save(validation_data, name_path + 'validation_data.pt')
-torch.save(test_data, name_path + 'test_data.pt')
+    # save training, validation and test data
+    name_path = 'results/v6_z3_s_zLoss_sin/data/'
+    torch.save(train_data, name_path + 'train_data.pt')
+    torch.save(train_idxOfNewVideo, path_toSave + 'train_idxOfNewVideo.pt')
+    torch.save(validation_data, name_path + 'validation_data.pt')
+    torch.save(test_data, name_path + 'test_data.pt')
+
+else:
+    train_data = torch.load(path_toSave + 'train_data.pt')
+    validation_data = torch.load(path_toSave + 'validation_data.pt')
+    print('loaded previous train data done!', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+    print('loaded previous validation data done!', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]), len(validation_data[0][0][0][0]))
 
 
 #############################################################################################################
@@ -570,7 +584,7 @@ for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v6Tboard_z1_s_zLoss_sin/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v6Tboard_z3_s_zLoss_sin/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         
         # load new network
         if os.path.isfile(path_autoencoder + f'Ae_3000epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly4.pt'):
@@ -605,9 +619,9 @@ for lr_rate in lr_rate_arr:
                 print('evaluate epoch', epoch, 'in phase sindy done')
 
             # TODO: save model every 1000 epoch
-            if epoch % 2500 == 0 or epoch > params['number_epoch_ae'] and epoch % 2500 == 0:
-                name_Ae = 'results/v6_z1_s_zLoss_sin/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
-                name_Xi = 'results/v6_z1_s_zLoss_sin/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
+            if epoch % 200 == 0 or epoch > params['number_epoch_ae'] and epoch % 200 == 0:
+                name_Ae = 'results/v6_z3_s_zLoss_sin/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
+                name_Xi = 'results/v6_z3_s_zLoss_sin/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
                 torch.save(autoencoder, name_Ae)
                 if epoch > params['number_epoch_ae']:
                     torch.save(network['Xi'], name_Xi)
