@@ -120,12 +120,13 @@ def calculateSindy():
 params = {}
 
 # TODO: autoencoder settings
-params['number_epoch_ae'] = 300                         # number of epochs only autoencoder
-params['number_epoch_sindy'] = 300
+params['number_epoch_ae'] = 501                         # number of epochs only autoencoder
+params['number_epoch_sindy'] = 1001
+params['bool_loadNewData'] = True                       # if True load new data, if false load data from previous training
 params['z_dim'] = 1                                     # number of coordinates for SINDy
 params['batch_size'] = 16                                # batch size
 params['lr_rate'] = 1e-5                                 # learning rate
-params['weight_decay'] = 1e-8                               # weight decay for NN optimizer
+params['weight_decay'] = 1e-8                            # weight decay for NN optimizer
 
 # loss function weighting
 params['loss_weight_decoder'] = 1.0
@@ -140,116 +141,137 @@ params['include_sine'] = False
 
 # video processing
 path_train = 'Videos/train/'
-path_autoencoder = 'results/v4_lre-5_z5_poly4/Ae_600epoch_bs16_lr1e-5_z5_sindth0-5_poly4.pt'
+path_autoencoder = 'results/test/'
+path_savedData = 'results/v5_hyperparam3_long/data/'
 
+
+print('With: encoded = F.sigmoid(self.fc1(encoded))')
 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
 #############################################################################################################
 # data preprocessing
 #############################################################################################################
-#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print('cuda available: ', torch.cuda.is_available())
-#print('cuda memory', torch.cuda.memory_summary(device=None, abbreviated=False))
 torch.cuda.empty_cache()
 
-# read the train videos in random order
-file_names = []
-# for f in listdir(path_train):
-#     if f != 'high_res':
-#         file_names.append(f)
+# In the first training phase load new data, in a second training phase use the same train, evaluate and test data set
+if params['bool_loadNewData'] == True:
+    print('loaded new data directly from videos')
 
-# random.shuffle(file_names)
+    # read the train videos in random order
+    file_names = []
+    for f in listdir(path_train):
+        if f != 'high_res':
+            file_names.append(f)
 
-# for testing purpose, only take one video
-file_names.append('Cu_2_Trim_low.mov')
+    random.shuffle(file_names)
 
-# define transform to tensor and resize to 1080x1920, 720x404 (16:9)
-# pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
-# normalize = transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])    # normalize around mean with sigma (std)
-# transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
-transform = transforms.ToTensor()
+    # define transform to tensor and resize to 1080x1920, 720x404 (16:9)
+    # pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
+    # normalize = transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])    # normalize around mean with sigma (std)
+    # transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((1080, 1920))])
+    transform = transforms.ToTensor()
 
-# read data to list and transform to tensor
-train_data_tmp = []
-train_data = []
-train_idxOfNewVideo = []
-count = 0
-for f in file_names:
-    # if count == 3:
-    #     break
-    count += 1
-    train_idxOfNewVideo.append(len(train_data))
-    vidcap = cv2.VideoCapture(path_train + f)
-    success,imgR = vidcap.read()
-    print('Read training data:',f)
-    while success:
-        imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
-        imgR_tensor = transform(imgR)
-        train_data_tmp.append(imgR_tensor)
+    # read data to list and transform to tensor
+    train_data_tmp = []
+    train_data = []
+    train_idxOfNewVideo = []
+    count = 0
+    for f in file_names:
+        # if count == 3:
+        #     break
+        count += 1
+        train_idxOfNewVideo.append(len(train_data))
+        vidcap = cv2.VideoCapture(path_train + f)
         success,imgR = vidcap.read()
-        # make a batch
-        if len(train_data_tmp) >= params['batch_size']:
-            train_data.append(torch.stack(train_data_tmp))
-            train_data_tmp = []
+        print('Read training data:',f)
+        while success:
+            imgR = cv2.cvtColor(imgR, cv2.COLOR_BGR2RGB)
+            imgR_tensor = transform(imgR)
+            train_data_tmp.append(imgR_tensor)
+            success,imgR = vidcap.read()
+            # make a batch
+            if len(train_data_tmp) >= params['batch_size']:
+                train_data.append(torch.stack(train_data_tmp))
+                del train_data_tmp
+                train_data_tmp = []
 
-    print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+        print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
-vidcap.release()
+    vidcap.release()
 
-print('index of new videos: ', train_idxOfNewVideo)
-print('train data reading done!')
+    print('index of new videos: ', train_idxOfNewVideo)
+    print('train data reading done!')
 
 
-# split into validation and training set
-validation_data = []
-# take 10% of training set batches to validation set, take always two
-nbr_batch = int(len(train_data)*0.1 / 2) + 1
-# take first two frames of a video --> goal: no interruption of the video
-for i in range(0,nbr_batch):
-    # choose position of train_idxOfNewVideo
-    choose = random.randint(0, len(train_idxOfNewVideo)-1)
-    whereInData = train_idxOfNewVideo[choose]
-    # check if there are more than 3 batches of frames available
-    if len(train_idxOfNewVideo) > 1:
-        if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 3:
+    # split into validation and training set
+    validation_data = []
+    # take 10% of training set batches to validation set, take always two (totally ca. 1000 batches / 22 videos == 45 batches/video)
+    nbr_batch = int(len(train_data)*0.09 / 2) + 1
+    # take first two frames of a video --> goal: no interruption of the video
+    for i in range(0,nbr_batch):
+        # choose random position of train_idxOfNewVideo
+        choose = random.randint(0, len(train_idxOfNewVideo)-1)
+        whereInData = train_idxOfNewVideo[choose]
+        # more than one video
+        if len(train_idxOfNewVideo) > 1 and choose+1 < len(train_idxOfNewVideo):
+            # check if there are more than 3 batches of frames available
+            if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 3:
+                element1 = train_data[whereInData]
+                element2 = train_data[whereInData+1]
+                validation_data.append(element1)
+                validation_data.append(element2)
+                train_data.pop(whereInData+1)
+                train_data.pop(whereInData)
+                # adapt index where new videos start in train data
+                for j in range(choose+1, len(train_idxOfNewVideo)):
+                    train_idxOfNewVideo[j] -= 2
+        # only one video
+        elif len(train_data) > 3:
             element1 = train_data[whereInData]
             element2 = train_data[whereInData+1]
             validation_data.append(element1)
             validation_data.append(element2)
             train_data.pop(whereInData+1)
             train_data.pop(whereInData)
-            # adapt index where new videos start in train data
-            for j in range(choose+1, len(train_idxOfNewVideo)):
-                train_idxOfNewVideo[j] -= 2
-    elif len(train_data) > 3:
-        element1 = train_data[whereInData]
-        element2 = train_data[whereInData+1]
-        validation_data.append(element1)
-        validation_data.append(element2)
-        train_data.pop(whereInData+1)
-        train_data.pop(whereInData)
 
-print('validation data construction done: ', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]))
-print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
-print('index of new videos: ', train_idxOfNewVideo)
+    print('validation data construction done: ', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]))
+    print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+    print('index of new videos: ', train_idxOfNewVideo)
 
-# delete not used objects
-del train_data_tmp
+    # delete not used objects
+    del train_data_tmp
 
 
-# split into test set
-test_data = []
-# take 10% of training set batches to test set, mimimum four
-nbr_batch = int(len(train_data)*0.1 / 4) + 1
-# take first two frames of a video --> goal: no interruption of the video
-for i in range(0,nbr_batch):
-    # choose position of train_idxOfNewVideo
-    choose = random.randint(0, len(train_idxOfNewVideo)-1)
-    whereInData = train_idxOfNewVideo[choose]
-    # check if there are more than 3 batches of frames available
-    if len(train_idxOfNewVideo) > 1:
-        if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 5:
+    # split into test set
+    test_data = []
+    # take 10% of training set batches to test set, mimimum four
+    nbr_batch = int(len(train_data)*0.1 / 4) + 1
+    # take first four frames of a video --> goal: no interruption of the video
+    for i in range(0,nbr_batch):
+        # choose position of train_idxOfNewVideo
+        choose = random.randint(0, len(train_idxOfNewVideo)-1)
+        whereInData = train_idxOfNewVideo[choose]
+        if len(train_idxOfNewVideo) > 1 and choose+1 < len(train_idxOfNewVideo):    
+            # check if there are more than 5 batches of frames available --> 2 left
+            if (train_idxOfNewVideo[choose+1] - train_idxOfNewVideo[choose]) > 5:
+                element1 = train_data[whereInData]
+                element2 = train_data[whereInData+1]
+                element3 = train_data[whereInData+2]
+                element4 = train_data[whereInData+3]
+                test_data.append(element1)
+                test_data.append(element2)
+                test_data.append(element3)
+                test_data.append(element4)
+                train_data.pop(whereInData+3)
+                train_data.pop(whereInData+2)
+                train_data.pop(whereInData+1)
+                train_data.pop(whereInData)
+                # adapt index where new videos start in train data
+                for j in range(choose+1, len(train_idxOfNewVideo)):
+                    train_idxOfNewVideo[j] -= 2
+        # only one video
+        elif len(train_data) > 5:
             element1 = train_data[whereInData]
             element2 = train_data[whereInData+1]
             element3 = train_data[whereInData+2]
@@ -262,32 +284,22 @@ for i in range(0,nbr_batch):
             train_data.pop(whereInData+2)
             train_data.pop(whereInData+1)
             train_data.pop(whereInData)
-            # adapt index where new videos start in train data
-            for j in range(choose+1, len(train_idxOfNewVideo)):
-                train_idxOfNewVideo[j] -= 2
-    elif len(train_data) > 5:
-        element1 = train_data[whereInData]
-        element2 = train_data[whereInData+1]
-        element3 = train_data[whereInData+2]
-        element4 = train_data[whereInData+3]
-        test_data.append(element1)
-        test_data.append(element2)
-        test_data.append(element3)
-        test_data.append(element4)
-        train_data.pop(whereInData+3)
-        train_data.pop(whereInData+2)
-        train_data.pop(whereInData+1)
-        train_data.pop(whereInData)
 
-print('test data construction done: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
-print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+    print('test data construction done: ', len(test_data), len(test_data[0]), len(test_data[0][0]), len(test_data[0][0][0]))
+    print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
 
 
-# save training, validation and test data
-name_path = 'results/v5_hyperparam3_2/data/'
-torch.save(train_data, name_path + 'train_data.pt')
-torch.save(validation_data, name_path + 'validation_data.pt')
-torch.save(test_data, name_path + 'test_data.pt')
+    # save training, validation and test data
+    torch.save(train_data, path_savedData + 'train_data.pt')
+    torch.save(train_idxOfNewVideo, path_savedData + 'train_idxOfNewVideo.pt')
+    torch.save(validation_data, path_savedData + 'validation_data.pt')
+    torch.save(test_data, path_savedData + 'test_data.pt')
+
+else:
+    train_data = torch.load(path_savedData + 'train_data.pt')
+    validation_data = torch.load(path_savedData + 'validation_data.pt')
+    print('loaded previous train data done!', len(train_data), len(train_data[0]), len(train_data[0][0]), len(train_data[0][0][0]), len(train_data[0][0][0][0]))
+    print('loaded previous validation data done!', len(validation_data), len(validation_data[0]), len(validation_data[0][0]), len(validation_data[0][0][0]), len(validation_data[0][0][0][0]))
 
 
 
@@ -356,7 +368,7 @@ class Autoencoder(nn.Module):
         if mode == 'train':
             encoded = self.encode(x)
             encoded = encoded.view(-1,200*8*10)
-            encoded = self.fc1(encoded)
+            encoded = F.sigmoid(self.fc1(encoded))        # squash network into [0,1]
 
             decoded = self.fc2(encoded)
             decoded = decoded.view(-1,200,8,10)
@@ -376,17 +388,6 @@ class Autoencoder(nn.Module):
 #############################################################################################################
 # training loop
 #############################################################################################################
-
-# # load model
-# if os.path.isfile(path_autoencoder):
-#     autoencoder = torch.load(path_autoencoder)
-#     autoencoder = autoencoder.cpu()
-#     print('loaded autoencoder', path_autoencoder)
-# else:
-#     autoencoder = Autoencoder()
-#     autoencoder = autoencoder.cpu()        # or .cuda()
-#     print('loaded new autoencoder')
-
 
 # to save network data and initialize loss values
 network = {}
@@ -487,10 +488,6 @@ def train(epoch, steps, phase):
 
     
     print('\n')
-
-    # hyperparametering with the last losses of the epoch
-    writer.add_hparams({'lr': lr_rate, 'zDimension': dimZ}, 
-           {'auto encoder loss': network['ae_loss'],'combined loss': network['combined_loss'], 'sindy x loss': network['sindy_x_loss'], 'sparsity loss': network['sparse_loss']})
     
     # delete from cuda
     del encode_tensor
@@ -521,7 +518,8 @@ def evaluate(steps, phase):
         # append average loss of this epoch
         evaluated_combined_loss_perData = evaluated_combined_loss/len(validation_data)
         writer.add_scalar(f'Evaluation loss / batch; ae: {nbrAeEpoch}epochs / sindy: {nbrSindyEpoch}epochs', evaluated_combined_loss_perData, global_step=steps)
-        writer.add_images(f'Reconstructed images; ae: {nbrAeEpoch}epochs / sindy: {nbrSindyEpoch}epochs', recon_eval_tensor.cpu().detach().numpy(), global_step=steps)
+        if epoch % 400 == 0:
+            writer.add_images(f'Reconstructed images; ae: {nbrAeEpoch}epochs / sindy: {nbrSindyEpoch}epochs', recon_eval_tensor.cpu().detach().numpy(), global_step=steps)
         steps += 1
 
     # train with autoencoder and sindy
@@ -557,7 +555,8 @@ def evaluate(steps, phase):
         evaluated_sindy_loss_perData = evaluated_sindy_loss/len(validation_data)*2
         writer.add_scalar(f'Evaluation loss / batch; ae: {nbrAeEpoch}epochs / sindy: {nbrSindyEpoch}epochs', evaluated_combined_loss_perData, global_step=steps)
         writer.add_scalar('Evaluation sindy x loss per epoch in sindy phase', evaluated_sindy_loss_perData, global_step=steps)
-        writer.add_images(f'Reconstructed images; ae: {nbrAeEpoch}epochs / sindy: {nbrSindyEpoch}epochs', recon_eval_tensor.cpu().detach().numpy(), global_step=steps)
+        if epoch % 400 == 0:
+            writer.add_images(f'Reconstructed images; ae: {nbrAeEpoch}epochs / sindy: {nbrSindyEpoch}epochs', recon_eval_tensor.cpu().detach().numpy(), global_step=steps)
         steps += 1
     else:
         print('No such evaluation phase available:', phase)
@@ -571,8 +570,8 @@ def evaluate(steps, phase):
 
 
 # TODO: print to tensorboard and hyperparameter search
-lr_rate_arr = [0.00001,0.0001, 0.01]
-dim_z_arr = [1, 2, 3, 5, 10]
+lr_rate_arr = [0.0001]
+dim_z_arr = [5, 10]
 # lr_rate_arr = [params['lr_rate']]
 # dim_z_arr = [params['z_dim']]
 
@@ -580,12 +579,18 @@ for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v5Tensorboard_hyperparam3_2/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v5_Tboard_hyperparam3_long/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         print('\n','lr_rate', lr_rate,'z dimension', dimZ)
 
         # load new network
-        autoencoder = Autoencoder()
-        autoencoder = autoencoder.cuda()
+        if os.path.isfile(path_autoencoder + f'Ae_2000epoch_bs16_lr1e-05_z{dimZ}_sindt05_poly4'):
+            autoencoder = torch.load(path_autoencoder + f'Ae_2000epoch_bs16_lr1e-05_z{dimZ}_sindt05_poly4')
+            autoencoder = autoencoder.cuda()
+            print('loaded autoencoder', path_autoencoder + f'Ae_2000epoch_bs16_lr1e-05_z{dimZ}_sindt05_poly4')
+        else:
+            autoencoder = Autoencoder()
+            autoencoder = autoencoder.cuda()        # or .cuda()
+            print('loaded new autoencoder')
         print('initialized new autoencoder')
         
         # optimization technique
@@ -610,16 +615,23 @@ for lr_rate in lr_rate_arr:
                 print('evaluate epoch', epoch, 'in phase sindy done')
 
             # TODO: save model every 1000 epoch
-            if epoch % 100 == 0 or epoch > params['number_epoch_ae'] and epoch % 50 == 0:
-                name_Ae = 'results/v5_hyperparam3_2/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly4.pt'
-                name_Xi = 'results/v5_hyperparam3_2/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly4.pt'
+            if epoch % 1000 == 0 or epoch > params['number_epoch_ae'] and epoch % 500 == 0:
+                name_Ae = 'results/v5_hyperparam3_long/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly4.pt'
+                name_Xi = 'results/v5_hyperparam3_long/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly4.pt'
                 torch.save(autoencoder, name_Ae)
                 if epoch > params['number_epoch_ae']:
                     torch.save(network['Xi'], name_Xi)
                                   
                 print('saved model in epoch', epoch)
+            
+            
+            # hyperparametering with the last losses of the epoch after network already learned a bit
+            if epoch > params['number_epoch_ae'] / 2 and epoch % 300 == 0:
+                writer.add_hparams({'lr': params['lr_rate'], 'zDimension': params['z_dim']}, 
+                        {'auto encoder loss': network['ae_loss'],'combined loss': network['combined_loss'], 'sindy x loss': network['sindy_x_loss'], 'sparsity loss': network['sparse_loss'], 'epoch': epoch})
 
-        writer.add_graph(autoencoder)
+
+        # writer.add_graph(autoencoder)
         del criterion
         del optimizer
         autoencoder = autoencoder.cpu()

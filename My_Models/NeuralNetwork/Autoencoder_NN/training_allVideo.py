@@ -584,7 +584,7 @@ for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v6Tboard_z3_s_zLoss_sin/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v6_Tboard_z3_s_zLoss_sin/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         
         # load new network
         if os.path.isfile(path_autoencoder + f'Ae_3000epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly4.pt'):
