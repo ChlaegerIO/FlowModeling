@@ -40,7 +40,7 @@ def printProgress(epoch, batch_id, loss):
     else:
         print('\rTrain Epoche {}: {}% [{}]\t , loss: {:.6f}'.format(
             epoch+1, int(100. * (batch_id+1) / len(train_data)),progress, loss.item()), end='', flush = True)
-        
+
 
 def networkLoss():
     """
@@ -144,7 +144,6 @@ path_autoencoder = 'results/v1_3_z3_newSindy/'
 
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
 print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'])
-print('With: encoded = torch.sigmoid(self.fc1(encoded))')
 print('auto encoder potentially from path: ', path_autoencoder)
 print('ae epoch number: ', params['number_epoch_ae'], 'sindy epoch number: ', params['number_epoch_sindy'])
 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -362,7 +361,7 @@ class Autoencoder(nn.Module):
         if mode == 'train':
             encoded = self.encode(x)
             encoded = encoded.view(-1,200*8*10)
-            encoded = torch.sigmoid(self.fc1(encoded))        # squash network into [0,1]
+            encoded = self.fc1(encoded)
 
             decoded = self.fc2(encoded)
             decoded = decoded.view(-1,200,8,10)

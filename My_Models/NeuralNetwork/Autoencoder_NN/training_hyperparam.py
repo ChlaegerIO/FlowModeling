@@ -145,7 +145,6 @@ path_autoencoder = 'results/test/'
 path_savedData = 'results/v5_hyperparam3_long/data/'
 
 
-print('With: encoded = F.sigmoid(self.fc1(encoded))')
 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
@@ -368,7 +367,7 @@ class Autoencoder(nn.Module):
         if mode == 'train':
             encoded = self.encode(x)
             encoded = encoded.view(-1,200*8*10)
-            encoded = F.sigmoid(self.fc1(encoded))        # squash network into [0,1]
+            encoded = self.fc1(encoded)
 
             decoded = self.fc2(encoded)
             decoded = decoded.view(-1,200,8,10)
