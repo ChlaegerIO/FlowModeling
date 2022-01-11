@@ -268,7 +268,7 @@ if params['bool_loadNewData'] == True:
                 train_data.pop(whereInData)
                 # adapt index where new videos start in train data
                 for j in range(choose+1, len(train_idxOfNewVideo)):
-                    train_idxOfNewVideo[j] -= 2
+                    train_idxOfNewVideo[j] -= 4
         # only one video
         elif len(train_data) > 5:
             element1 = train_data[whereInData]

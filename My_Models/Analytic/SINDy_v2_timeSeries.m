@@ -5,26 +5,40 @@ addpath 'C:\Users\timok\Documents\Git_bachelor\FlowModeling\My_Models\used_funct
 % ------------------------------------------------------------------------
 lambda = 0.099;                     % sparsification knob for SINDy
 split = 0.8;                        % split between the train and test data
+polyOrder = 1;
 
 % ------------------------------------------------------------------------
 
 %% Generate data
-% ../Videos/St_fog/fog_video_above_timelapse_fast_low.mov
-% ../Videos/St_fog/fog_video_near_60x_low.mov
-% ../Videos/Ac_lenticularis/Ac_timelapse_sunrise_low.mov
-% ../Videos/Ac_night/Ac_timelapse_night_low.mov
-% ../Videos/Cb/Cb_timelapse_low.mov
-% ../Videos/Ci_Cu/Ci_Cu_timelapse1_low.mov
-% ../Videos/Cu/Cu_timelapse_Trim_low.mov
-% ../Videos/Sc/sc_beneath_timelapse_150x_low.mov
-% ../Videos/Ac_St_Cu/Ac_timelapseNov1_low.mov
-% ../Videos/Ac_St_Cu/Ac_timelapseNov1_low_short.mp4
-% ../Videos/Ac_St_Cu/Ac_timelapseNov2_low.mov
-[X_train, X_test, video] = importVideo('../Videos/St_fog/fog_video_above_timelapse_fast_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Ac_Fabio_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Ac_Fabio2_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Ac_Fabio3_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Ac_Fabio4_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Ac_night_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Ac_Nov1_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Ac_Nov2_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Cb_1_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Cb_2_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Cu_1_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Cu_2_Trim_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Cu_3_1_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Cu_3_2_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Cu_Fabio_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Cu_Fabio2_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/Sc_1_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/St_Fabio1_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/St_Fabio2_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/St_near_timelapse_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/St_Nov21_1_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/St_Nov21_2_Trim_low.mov',split);
+% [X_train, X_test, video] =  importVideo('../Videos/train/St_Oct_low.mov',split);
+
+% define paths to save video
+path_figure = 'figures_SINDy_v2/Cu_2_'
 
 X_train = matrixToNorm(X_train, 0, 0.8);
 X_test = matrixToNorm(X_test, 0, 0.8);
-makeVideo('figures_SINDy_v2/St_fog', X_train, video.Height, video.Width);
+makeVideo(strcat(path_figure,'Video_Input'), X_train, video.Height, video.Width);
 
 X_train1 = X_train(:, 1:100);
 X_train2 = X_train(:, 2:101);
@@ -45,11 +59,11 @@ V1_2 = V1_2(:,1:r);
 fprintf('coordinates done \n');
 
 %% SINDy library - in time
-ThetaV = buildTheta(V1_1,r,1);
+ThetaV = buildTheta(V1_1,r,polyOrder);
 fprintf('library done \n');
 
 %% SINDy regression
-XiV = sparsifyDynamics(ThetaV,V1_2,lambda,1);
+XiV = sparsifyDynamics(ThetaV,V1_2,lambda,polyOrder);
 figure
 imagesc(real(XiV))
 figure
@@ -80,7 +94,7 @@ X_pred = U1_1*S1_1*V1_pred';
 % X_pred = U1_1*S1_1*Vt_pred';
 X_pred = matrixToNorm(X_pred, 0, 0.9);
 
-makeVideo('figures_SINDy_v2/St_fog_lambda0.99_pol1_pred1_1', X_pred, video.Height, video.Width);
+makeVideo(strcat(path_figure,'lambda',num2str(lambda),'_pol',num2str(polyOrder),'_pred'), X_pred, video.Height, video.Width);
 % save ('St_XiV_lam0.99_f100_r1.mat', 'XiV','-v7.3');
 fprintf('video ouput done \n');
 

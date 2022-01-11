@@ -1,17 +1,17 @@
 close all, clear all, clc
-addpath 'C:\Users\timok\Documents\Git_bachelor\FlowModeling\My_Models\used_functions'
+addpath 'C:\Users\timok\Documents\Git_bachelor\FlowModeling\My_Models\Analytic\used_functions'
 
 %% tuning parameters
 % ------------------------------------------------------------------------
 % used number of frames
-nrOfFramesUsed = 300;
+nrOfFramesUsed = 400;
 
-rr = 298;                   % rsvd rank
+rr = 330;                   % rsvd rank
 q = 1;                      % rsvd power iteration
 p = 5;                      % rsvd oversampling parameter
 
-r = 298;                    % truncate at r, look at singular values
-factor = 2;                 % how long to predict the future
+r = rr;                    % truncate at r, look at singular values
+factor = 3;                 % how long to predict the future
 dt = 1;                     % timesteps width
 fg_bg_epsilon = 1e-2;       % foreground background separation, omegas around +-epsilon of origin
 
@@ -34,25 +34,33 @@ cl1_sizey = 220;
 % ------------------------------------------------------------------------
 
 %% input data/video processing
-% TODO: change to lower video quality
 % read video
-% ../Videos/St_fog_real_timelapse/fog_video_above_timelapse_10x.mov
-% ../Videos/St_fog_real_timelapse/fog_video_above_timelapse_10x_low.mov
-% ../Videos/St_fog_real_timelapse/fog_video_near_60x.mov
-% ../Videos/St_fog_real_timelapse/fog_video_near_60x_low.mov
-% ../Videos/Ac_lenticularis_timelapse_sunrise_short/Ac_timelapse_sunrise.mp4
-% ../Videos/Ac_lenticularis_timelapse_sunrise_short/Ac_timelapse_sunrise_low.mov
-% ../Videos/Ac_timelapse_night/Ac_timelapse_night.mp4
-% ../Videos/Ac_timelapse_night/Ac_timelapse_night_low.mov
-% ../Videos/Cb_timelapse/Cb_timelapse.mov
-% ../Videos/Cb_timelapse/Cb_timelapse_low.mov
-% ../Videos/Ci_Cu_timelapse/Ci_Cu_timelapse1.mp4
-% ../Videos/Ci_Cu_timelapse/Ci_Cu_timelapse1_low.mov
-% ../Videos/Cu_timelapse/Cu_timelapse_Trim.mp4
-% ../Videos/Cu_timelapse/Cu_timelapse_Trim_low.mov
-% ../Videos/Sc_real_timelapse/sc_beneath_timelapse_150x.mov
-% ../Videos/Sc_real_timelapse/sc_beneath_timelapse_150x_low.mov
-video = VideoReader('../Videos/Cu_timelapse/Cu_timelapse_Trim_low.mov')
+% video =  VideoReader('../Videos/train/Ac_Fabio_low.mov')
+% video =  VideoReader('../Videos/train/Ac_Fabio2_low.mov')
+% video =  VideoReader('../Videos/train/Ac_Fabio3_low.mov')
+% video =  VideoReader('../Videos/train/Ac_Fabio4_low.mov')
+% video =  VideoReader('../Videos/train/Ac_night_low.mov')
+% video =  VideoReader('../Videos/train/Ac_Nov1_low.mov')
+% video =  VideoReader('../Videos/train/Ac_Nov2_low.mov')
+% video =  VideoReader('../Videos/train/Cb_1_low.mov')
+% video =  VideoReader('../Videos/train/Cb_2_low.mov')
+% video =  VideoReader('../Videos/train/Cu_1_low.mov')
+video =  VideoReader('../Videos/train/Cu_2_Trim_low.mov')
+% video =  VideoReader('../Videos/train/Cu_3_1_low.mov')
+% video =  VideoReader('../Videos/train/Cu_3_2_low.mov')
+% video =  VideoReader('../Videos/train/Cu_Fabio_low.mov')
+% video =  VideoReader('../Videos/train/Cu_Fabio2_low.mov')
+% video =  VideoReader('../Videos/train/Sc_1_low.mov')
+% video =  VideoReader('../Videos/train/St_Fabio1_low.mov')
+% video =  VideoReader('../Videos/train/St_Fabio2_low.mov')
+% video =  VideoReader('../Videos/train/St_near_timelapse_low.mov')
+% video =  VideoReader('../Videos/train/St_Nov21_1_low.mov')
+% video =  VideoReader('../Videos/train/St_Nov21_2_Trim_low.mov')
+% video =  VideoReader('../Videos/train/St_Oct_low.mov')
+
+% define paths to save video
+path_figure = 'figures_v3/Cu_2_'
+
 nrOfFramesUsed = round(video.NumFrames - 1);
 nx = video.Height;
 ny = video.Width;
@@ -69,13 +77,13 @@ end
 X = matrixToNorm(X,0, 0.8);
 
 % print input video, only do once
-% videoOut_input = VideoWriter('figures_v3/Cu_timelapse_Trim','Grayscale AVI')
-% open(videoOut_input);
-% for i = 1:size(X,2)
-%     frame_gray = reshape(X(:,i),nx,ny);
-%     writeVideo(videoOut_input,frame_gray);
-% end
-% close(videoOut_input);
+videoOut_input = VideoWriter(strcat(path_figure, 'Video_Input','Grayscale AVI'))
+open(videoOut_input);
+for i = 1:size(X,2)
+    frame_gray = reshape(X(:,i),nx,ny);
+    writeVideo(videoOut_input,frame_gray);
+end
+close(videoOut_input);
 
 % filter for one cloud if desired, TODO: make a function
 if withBox == true
@@ -93,7 +101,7 @@ if withBox == true
     figure;
     imagesc(reshape(X(:,1),nx,ny));
     colormap gray
-    print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_window.jpeg')]);
+    print('-djpeg', '-loose', [path_figure sprintf('window.jpeg')]);
 end
 
 clear frame, clear frame_gray;  % free up space
@@ -119,16 +127,16 @@ x1 = X(:,1);
 b = (W*eigs)^(-1)*U'*x1;         % better way of calculation b
 xlast = X(:, size(X,2));
 
-% % plot singular values and Cumulative Energy
-% figure('Name', 'Singular values'), subplot(1,2,1)
-% semilogy(diag(S), 'x-', 'LineWidth',1.5), grid on
-% xlabel('r'), ylabel('Singular value, \sigma_r'), set(gca, 'FontSize', 14)
-% subplot(1,2,2)
-% plot(cumsum(diag(S))/sum(diag(S)), 'k', 'LineWidth',2), grid on
-% xlabel('r'), ylabel('Cumulative Energy'), set(gca, 'FontSize', 14)
-% set(gcf, 'Color', 'w', 'Position', [400 200 800 600]);
-% set(gcf, 'PaperUnits', 'inches', 'PaperPosition', [10 10 16 12], 'PaperPositionMode', 'manual');
-% print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_singularvalues_300frames.jpeg')]);
+% plot singular values and Cumulative Energy
+figure('Name', 'Singular values'), subplot(1,2,1)
+semilogy(diag(S), 'x-', 'LineWidth',1.5), grid on
+xlabel('r'), ylabel('Singular value, \sigma_r'), set(gca, 'FontSize', 14)
+subplot(1,2,2)
+plot(cumsum(diag(S))/sum(diag(S)), 'k', 'LineWidth',2), grid on
+xlabel('r'), ylabel('Cumulative Energy'), set(gca, 'FontSize', 14)
+set(gcf, 'Color', 'w', 'Position', [400 200 800 600]);
+set(gcf, 'PaperUnits', 'inches', 'PaperPosition', [10 10 16 12], 'PaperPositionMode', 'manual');
+print('-djpeg', '-loose', [path_figure sprintf('singularvalues.jpeg')]);
 
 %  Plot DMD spectrum
 figure
@@ -138,7 +146,7 @@ theta = (0:1:100)*2*pi/100;
 hold on, grid on
 scatter(real(omega),imag(omega),'ok')
 axis([-1.1 1.1 -1.1 1.1]);
-print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_omega_300frames.jpeg')]);
+print('-djpeg', '-loose', [path_figure sprintf('omega.jpeg')]);
 
 %% separate foreground from background
 bg = find(abs(omega)<fg_bg_epsilon);
@@ -152,21 +160,21 @@ omega_bg = omega(bg);           % background
 Phi_bg = Phi(:,bg);             % DMD background mode
 b_bgLast = Phi_bg\xlast;
 
-% %% plot first picInX*picInY POD modes
-% picInX = 6;
-% picInY = 4;
-% PODmodes = zeros(nx*picInX,ny*picInY);
-% count = 1;
-% for i=1:picInX
-%     for j=1:picInY
-%         PODmodes(1+(i-1)*nx:i*nx,1+(j-1)*ny:j*ny) = reshape(real(Phi_fg(:,picInY*(i-1)+j)),nx,ny);
-%         count = count + 1;
-%     end
-% end
-% 
-% figure, axes('position',[0  0  1  1]), axis off
-% imagesc(PODmodes), colormap gray
-% print('-djpeg', '-loose', ['figures_v3/' sprintf('Cu_timelapse_Trim_Phi_fg_modes_300frames.jpeg')]);
+%% plot first picInX*picInY POD modes
+picInX = 6;
+picInY = 4;
+PODmodes = zeros(nx*picInX,ny*picInY);
+count = 1;
+for i=1:picInX
+    for j=1:picInY
+        PODmodes(1+(i-1)*nx:i*nx,1+(j-1)*ny:j*ny) = reshape(real(Phi_fg(:,picInY*(i-1)+j)),nx,ny);
+        count = count + 1;
+    end
+end
+
+figure, axes('position',[0  0  1  1]), axis off
+imagesc(PODmodes), colormap gray
+print('-djpeg', '-loose', [path_figure sprintf('Phi_fgModes.jpeg')]);
 
 % free up space if necessary
 sizeOfX = size(X,2);
@@ -197,29 +205,33 @@ for kk = 1:length(k)
 end
 X_bg = Phi_bg * X_bg;
 
-% % foreground recreation
-% X_fg = [X-abs(X_bg(:, 1:size(X,2)))];   % abs() nimmt auch im() Werte mit
-% R = zeros(size(X_bg,1), size(X_bg,2));
-% 
-% b_fgLast = Phi_fg\X(:,size(X,2));
-% 
-% for i = 1:size(X_fg,1)                  % add R to X_bg after
-%     for j = 1:size(X_fg,2)
-%         if (X_fg(i,j)) < 0
-%             R(i,j) = X_fg(i,j); 
-%             X_fg(i,j) = 0;
-%         end
-%     end
-% end
-% 
-% X_bg = X_bg + R;
+% foreground recreation
+X_fg = [X-abs(X_bg(:, 1:size(X,2)))];   % abs() nimmt auch im() Werte mit
+R = zeros(size(X_bg,1), size(X_bg,2));
+
+b_fgLast = Phi_fg\X(:,size(X,2));
+
+for i = 1:size(X_fg,1)                  % add R to X_bg after
+    for j = 1:size(X_fg,2)
+        if (X_fg(i,j)) < 0
+            R(i,j) = X_fg(i,j); 
+            X_fg(i,j) = 0;
+        end
+    end
+end
+
+X_bg = X_bg + R;
+
+figure, axes('position',[0  0  1  1]), axis off
+imagesc(reshape(real(X_fg(:,10)),nx,ny)), colormap gray
+print('-djpeg', '-loose', [path_figure sprintf('fg_frame10.jpeg')]);
 
 % foreground prediction
 X_fg = zeros(numel(omega_fg), length(t));
-% for tt = 1:length(t)
-%     X_fg(:, tt) = b_fgLast .* exp(omega_fg.*t(tt));
-% end
-% X_fg = Phi_fg * X_fg;
+for tt = 1:length(t)
+    X_fg(:, tt) = b_fgLast .* exp(omega_fg.*t(tt));
+end
+X_fg = Phi_fg * X_fg;
 
 % spectral, discrete prediction
 for kk = 1:length(k)
@@ -251,7 +263,7 @@ if min(real(X_dmd_pred(:))) < 0 || max(real(X_dmd_pred(:))) > 1
 end
 
 % recreate and make a prediction as a video
-videoOut = VideoWriter('figures_v3/Cu_timelapse_Trim_factor2_300frames_r=298_bg_fg_only_prediction_spectral','Grayscale AVI')
+videoOut = VideoWriter(strcat(path_figure, 'factor', num2str(factor),'_rank', num2str(rr),'of', num2str(nrOfFramesUsed),'_bgFgPrediction','Grayscale AVI'))
 open(videoOut);
 for i = 1:size(X_dmd_pred,2)
     frame_gray_out = reshape(real(X_dmd_pred(:,i)),nx,ny);
