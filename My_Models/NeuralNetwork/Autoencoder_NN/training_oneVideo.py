@@ -40,7 +40,7 @@ def printProgress(epoch, batch_id, loss):
     else:
         print('\rTrain Epoche {}: {}% [{}]\t , loss: {:.6f}'.format(
             epoch+1, int(100. * (batch_id+1) / len(train_data)),progress, loss.item()), end='', flush = True)
-
+        
 
 def networkLoss():
     """
@@ -120,9 +120,9 @@ def calculateSindy():
 params = {}
 
 # TODO: autoencoder settings
-params['number_epoch_ae'] = 5001                         # number of epochs only autoencoder
-params['number_epoch_sindy'] = 5001
-params['z_dim'] = 1                                     # number of coordinates for SINDy
+params['number_epoch_ae'] = 3001                         # number of epochs only autoencoder
+params['number_epoch_sindy'] = 3001
+params['z_dim'] = 3                                     # number of coordinates for SINDy
 params['batch_size'] = 16                                # batch size
 params['lr_rate'] = 1e-5                                 # learning rate
 params['weight_decay'] = 1e-9                            # weight decay for NN optimizer
@@ -130,20 +130,21 @@ params['weight_decay'] = 1e-9                            # weight decay for NN o
 # loss function weighting
 params['loss_weight_decoder'] = 1.0
 params['loss_weight_sindy_x'] = 1.0
-params['loss_weight_sindy_z'] = 0.5
+params['loss_weight_sindy_z'] = 0
 params['loss_weight_sindy_regularization'] = 1e-6
 
 # SINDy parameters
-params['sindy_threshold'] = 0.05 
+params['sindy_threshold'] = 0.05
 params['poly_order'] = 4
-params['include_sine'] = True
+params['include_sine'] = False
 
 # video processing
 path_train = 'Videos/train/'
-path_autoencoder = 'results/v1_3_z3_newSindy/'
+path_autoencoder = 'results/tmp/'
 
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
-print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'])
+print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'], 'sind included: ', params['include_sine'])
+print('sindy weights: Auto encoder weight:', params['loss_weight_decoder'], 'Sindy x weight: ', params['loss_weight_sindy_x'], 'Sindy z weight: ', params['loss_weight_sindy_z'], 'Regularization weight: ', params['loss_weight_sindy_regularization'])
 print('auto encoder potentially from path: ', path_autoencoder)
 print('ae epoch number: ', params['number_epoch_ae'], 'sindy epoch number: ', params['number_epoch_sindy'])
 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -269,7 +270,7 @@ for i in range(0,nbr_batch):
             train_data.pop(whereInData)
             # adapt index where new videos start in train data
             for j in range(choose+1, len(train_idxOfNewVideo)):
-                train_idxOfNewVideo[j] -= 4
+                train_idxOfNewVideo[j] -= 2
     elif len(train_data) > 5:
         element1 = train_data[whereInData]
         element2 = train_data[whereInData+1]
@@ -289,7 +290,7 @@ print('train data: ', len(train_data), len(train_data[0]), len(train_data[0][0])
 
 
 # save training, validation and test data
-name_path = 'results/v6_z1_s_zLoss_sin/data/'
+name_path = 'results/v5_5_z3_s/data/'
 torch.save(train_data, name_path + 'train_data.pt')
 torch.save(validation_data, name_path + 'validation_data.pt')
 torch.save(test_data, name_path + 'test_data.pt')
@@ -567,7 +568,7 @@ for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v6_Tboard_z1_s_zLoss_sin/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v5_5_Tboard_z3_s/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         
         # load new network
         if os.path.isfile(path_autoencoder + f'Ae_3000epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly4.pt'):
@@ -578,7 +579,6 @@ for lr_rate in lr_rate_arr:
             autoencoder = Autoencoder()
             autoencoder = autoencoder.cuda()
             print('loaded new autoencoder')
-        print('initialized new autoencoder')
         
         # optimization technique
         criterion = nn.MSELoss()
@@ -602,9 +602,9 @@ for lr_rate in lr_rate_arr:
                 print('evaluate epoch', epoch, 'in phase sindy done')
 
             # TODO: save model every 1000 epoch
-            if epoch % 2500 == 0 or epoch > params['number_epoch_ae'] and epoch % 2500 == 0:
-                name_Ae = 'results/v6_z1_s_zLoss_sin/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
-                name_Xi = 'results/v6_z1_s_zLoss_sin/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
+            if epoch % 1500 == 0 or epoch > params['number_epoch_ae'] and epoch % 1500 == 0:
+                name_Ae = 'results/v5_5_z3_s/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
+                name_Xi = 'results/v5_5_z3_s/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly4.pt'
                 torch.save(autoencoder, name_Ae)
                 if epoch > params['number_epoch_ae']:
                     torch.save(network['Xi'], name_Xi)

@@ -119,9 +119,9 @@ def calculateSindy():
 
 params = {}
 
-# TODO: autoencoder settings
-params['number_epoch_ae'] = 501                         # number of epochs only autoencoder
-params['number_epoch_sindy'] = 1001
+# autoencoder settings
+params['number_epoch_ae'] = 1501                         # number of epochs only autoencoder
+params['number_epoch_sindy'] = 0
 params['bool_loadNewData'] = True                       # if True load new data, if false load data from previous training
 params['z_dim'] = 1                                     # number of coordinates for SINDy
 params['batch_size'] = 16                                # batch size
@@ -130,21 +130,23 @@ params['weight_decay'] = 1e-8                            # weight decay for NN o
 
 # loss function weighting
 params['loss_weight_decoder'] = 1.0
-params['loss_weight_sindy_x'] = 1.0
+params['loss_weight_sindy_x'] = 0.1
 params['loss_weight_sindy_z'] = 0
 params['loss_weight_sindy_regularization'] = 1e-6
 
 # SINDy parameters
-params['sindy_threshold'] = 0.5 
+params['sindy_threshold'] = 0.05 
 params['poly_order'] = 4
 params['include_sine'] = False
 
 # video processing
 path_train = 'Videos/train/'
 path_autoencoder = 'results/test/'
-path_savedData = 'results/v5_hyperparam3_long/data/'
+path_savedData = 'results/v5_6_hyperparam_Ae/data/'
 
 
+print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'], 'sind included: ', params['include_sine'])
+print('sindy weights: Auto encoder weight:', params['loss_weight_decoder'], 'Sindy x weight: ', params['loss_weight_sindy_x'], 'Sindy z weight: ', params['loss_weight_sindy_z'], 'Regularization weight: ', params['loss_weight_sindy_regularization'])
 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
@@ -159,11 +161,14 @@ if params['bool_loadNewData'] == True:
 
     # read the train videos in random order
     file_names = []
-    for f in listdir(path_train):
-        if f != 'high_res':
-            file_names.append(f)
+    # for f in listdir(path_train):
+    #     if f != 'high_res':
+    #         file_names.append(f)
 
-    random.shuffle(file_names)
+    # random.shuffle(file_names)
+
+    # just read one video
+    file_names.append('Cu_2_Trim_low.mov')
 
     # define transform to tensor and resize to 1080x1920, 720x404 (16:9)
     # pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
@@ -268,7 +273,7 @@ if params['bool_loadNewData'] == True:
                 train_data.pop(whereInData)
                 # adapt index where new videos start in train data
                 for j in range(choose+1, len(train_idxOfNewVideo)):
-                    train_idxOfNewVideo[j] -= 4
+                    train_idxOfNewVideo[j] -= 2
         # only one video
         elif len(train_data) > 5:
             element1 = train_data[whereInData]
@@ -568,9 +573,9 @@ def evaluate(steps, phase):
 
 
 
-# TODO: print to tensorboard and hyperparameter search
-lr_rate_arr = [0.0001]
-dim_z_arr = [5, 10]
+# print to tensorboard and hyperparameter search
+lr_rate_arr = [1e-5, 0.0001]
+dim_z_arr = [1,2,3,4,5, 10]
 # lr_rate_arr = [params['lr_rate']]
 # dim_z_arr = [params['z_dim']]
 
@@ -578,7 +583,7 @@ for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v5_Tboard_hyperparam3_long/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v5_6_Tboard_hyperparam_Ae/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         print('\n','lr_rate', lr_rate,'z dimension', dimZ)
 
         # load new network
@@ -590,7 +595,6 @@ for lr_rate in lr_rate_arr:
             autoencoder = Autoencoder()
             autoencoder = autoencoder.cuda()        # or .cuda()
             print('loaded new autoencoder')
-        print('initialized new autoencoder')
         
         # optimization technique
         criterion = nn.MSELoss()
@@ -614,9 +618,9 @@ for lr_rate in lr_rate_arr:
                 print('evaluate epoch', epoch, 'in phase sindy done')
 
             # TODO: save model every 1000 epoch
-            if epoch % 1000 == 0 or epoch > params['number_epoch_ae'] and epoch % 500 == 0:
-                name_Ae = 'results/v5_hyperparam3_long/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly4.pt'
-                name_Xi = 'results/v5_hyperparam3_long/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly4.pt'
+            if epoch % 500 == 0 or epoch > params['number_epoch_ae'] and epoch % 500 == 0:
+                name_Ae = 'results/v5_6_hyperparam_Ae/Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly4.pt'
+                name_Xi = 'results/v5_6_hyperparam_Ae/Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt05_poly4.pt'
                 torch.save(autoencoder, name_Ae)
                 if epoch > params['number_epoch_ae']:
                     torch.save(network['Xi'], name_Xi)
