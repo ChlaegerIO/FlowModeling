@@ -120,13 +120,13 @@ def calculateSindy():
 params = {}
 
 # autoencoder settings
-params['number_epoch_ae_start'] = 0                       # train interval [Ae_start + Sindy_start, Ae_end + Sindy_end]
-params['number_epoch_ae_end'] = 1501
+params['number_epoch_ae_start'] = 1601                       # train interval [Ae_start + Sindy_start, Ae_end + Sindy_end]
+params['number_epoch_ae_end'] = 3201
 params['number_epoch_sindy_start'] = 0
 params['number_epoch_sindy_end'] = 0
-params['z_dim'] = 10                                     # number of coordinates for SINDy
+params['z_dim'] = 5                                     # number of coordinates for SINDy
 params['batch_size'] = 16                                # batch size
-params['lr_rate'] = 1e-5                                 # learning rate
+params['lr_rate'] = 1e-5                                 # learning rate, could be a bit higher potentially, but not with zDim = 10
 params['weight_decay'] = 1e-9                            # weight decay for NN optimizer
 
 # loss function weighting
@@ -142,14 +142,15 @@ params['include_sine'] = False
 
 # video processing
 path_train = 'Videos/train/'
-path_autoencoder = 'results/v6_z10/'
-path_resultTrain = 'results/v6_z10/'
+path_autoencoder = 'results/v6_z5/'
+path_resultTrain = 'results/v6_z5/'
 
 # compute with 50GB GPU
-takeEvenVideos = True                          # take even or odd videos
+takeEvenVideos = False                          # take even or odd videos
 takeAllVideos = False                            # take all videos to train
+nbrOfPreviousTrainingSteps = 446000              # number to have nice continous curve in tensorboard, number is at the end of prints
 
-print('takeEvenVideos: ', takeEvenVideos)
+print('takeAllVideos:',takeEvenVideos, 'takeEvenVideos if not All: ', takeEvenVideos)
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
 print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'], 'sind included: ', params['include_sine'])
 print('sindy weights: Auto encoder weight:', params['loss_weight_decoder'], 'Sindy x weight: ', params['loss_weight_sindy_x'], 'Sindy z weight: ', params['loss_weight_sindy_z'], 'Regularization weight: ', params['loss_weight_sindy_regularization'])
@@ -171,16 +172,14 @@ if takeEvenVideos == True:
 else:
     video_nbr = 1                   # take odd videos
 for f in listdir(path_train):
-    if takeAllVideos == True and f != 'high_res':
+    if takeAllVideos == True:
         file_names.append(f)
-        print('file name all:', f)
     else:               # take every second video --> train with 50GB GPU
         boolTake = video_nbr % 2 == 0      # True, if all should be taken
         video_nbr += 1
-        if f != 'high_res' and boolTake:
-            file_names.append(f)
-            print('file name odd/even:', f)
-        
+        if boolTake:
+            file_names.append(f)        
+
 
 random.shuffle(file_names)
 print('readed file names: ', len(file_names))
@@ -536,13 +535,14 @@ for lr_rate in lr_rate_arr:
     params['lr_rate'] = lr_rate
     for dimZ in dim_z_arr:
         params['z_dim'] = dimZ
-        writer = SummaryWriter(f'runs/v6_Tboard_z10/trainLoss_LR{lr_rate}_dimZ{dimZ}')
+        writer = SummaryWriter(f'runs/v6_Tboard_z5/trainLoss_LR{lr_rate}_dimZ{dimZ}')
         
-        # load new network (TODO: automate)
-        if os.path.isfile(path_autoencoder + f'Ae_1200epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly3.pt'):
-            autoencoder = torch.load(path_autoencoder + f'Ae_1200epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly3.pt')
+        # load new network
+        tmpEpochStart = params['number_epoch_ae_start']-1
+        if os.path.isfile(path_autoencoder + f'Ae_{tmpEpochStart}epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly3.pt'):
+            autoencoder = torch.load(path_autoencoder + f'Ae_{tmpEpochStart}epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly3.pt')
             autoencoder = autoencoder.cuda()
-            print('loaded autoencoder', path_autoencoder + f'Ae_1200epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly3')
+            print('loaded autoencoder', path_autoencoder + f'Ae_{tmpEpochStart}epoch_bs16_lr1e-05_z{dimZ}_sindt005_poly3')
         else:
             autoencoder = Autoencoder()
             autoencoder = autoencoder.cuda()
@@ -552,8 +552,8 @@ for lr_rate in lr_rate_arr:
         criterion = nn.MSELoss()
         optimizer = torch.optim.Adam(autoencoder.parameters(), lr=params['lr_rate'], weight_decay=params['weight_decay'])
         
-        step_train = 0
-        step_eval = 0
+        step_train = nbrOfPreviousTrainingSteps
+        step_eval = params['number_epoch_ae_start']
         # epoch loop
         for epoch in range(params['number_epoch_ae_start'] + params['number_epoch_sindy_start'], params['number_epoch_ae_end'] + params['number_epoch_sindy_end']):
             # first train only autoencoder
@@ -570,7 +570,7 @@ for lr_rate in lr_rate_arr:
                 print('evaluate epoch', epoch, 'in phase sindy done')
 
             # save model per some amount of epochs
-            if epoch % 500 == 0 or epoch > params['number_epoch_ae_end'] and epoch % 200 == 0:
+            if epoch % 400 == 0 or epoch > params['number_epoch_ae_end'] and epoch % 200 == 0:
                 name_Ae = path_resultTrain + 'Ae_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly3.pt'
                 name_Xi = path_resultTrain + 'Xi_' + str(epoch) + 'epoch_bs16_lr' + str(lr_rate) + '_z' + str(dimZ) + '_sindt005_poly3.pt'
                 torch.save(autoencoder, name_Ae)
@@ -578,6 +578,9 @@ for lr_rate in lr_rate_arr:
                     torch.save(network['Xi'], name_Xi)
                                   
                 print('saved model in epoch', epoch)
+            
+            if epoch == params['number_epoch_ae_end'] - 1:
+                print('number of training steps to proceed: ', step_train)
 
     torch.cuda.empty_cache()
 
