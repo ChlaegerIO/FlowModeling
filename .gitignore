@@ -20,6 +20,7 @@ My_Models/NeuralNetwork/Autoencoder_NN/.ipynb_checkpoints/
 # ignore folders in chapter book
 Chapter_book/DataBook_Python/Lib/
 Chapter_book/DataBook_Python/Scripts/
+Chapter_book/DataBook_Python/etc/
 Chapter_book/DataBook_Python/share/
 Chapter_book/DataBook_Python/pyvenv.cfg
 
