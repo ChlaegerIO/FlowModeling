@@ -5,9 +5,21 @@
 *.asv
 *.mat
 *.pt
-
-# ignore folders
-My_Models/NeuralNetwork/Lib/
-My_Models/NeuralNetwork/Autoencoder_NN/runs/
-Chapter_book/DataBook_Python/Lib/
 .vscode/
+
+# ignore folders in my models
+My_Models/NeuralNetwork/Lib/
+My_Models/NeuralNetwork/Scripts/
+My_Models/NeuralNetwork/etc/
+My_Models/NeuralNetwork/share/
+My_Models/NeuralNetwork/pyvenv.cfg
+My_Models/NeuralNetwork/Autoencoder_NN/results/
+My_Models/NeuralNetwork/Autoencoder_NN/runs/
+My_Models/NeuralNetwork/Autoencoder_NN/.ipynb_checkpoints/
+
+# ignore folders in chapter book
+Chapter_book/DataBook_Python/Lib/
+Chapter_book/DataBook_Python/Scripts/
+Chapter_book/DataBook_Python/share/
+Chapter_book/DataBook_Python/pyvenv.cfg
+
