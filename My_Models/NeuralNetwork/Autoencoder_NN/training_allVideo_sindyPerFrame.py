@@ -146,11 +146,10 @@ path_autoencoder = 'results/v6_z5/'
 path_resultTrain = 'results/v6_z5/'
 
 # compute with 50GB GPU
-takeEvenVideos = False                          # take even or odd videos
-takeAllVideos = False                            # take all videos to train
-nbrOfPreviousTrainingSteps = 1700000              # number to have nice continous curve in tensorboard, number is at the end of prints
+takeAllVideos = True                            # take all videos to train
+nbrOfPreviousTrainingSteps = 2200000              # number to have nice continous curve in tensorboard, number is at the end of prints
 
-print('takeAllVideos:',takeAllVideos, ', takeEvenVideos if not All: ', takeEvenVideos)
+print('takeAllVideos:',takeAllVideos)
 print('zDim', params['z_dim'], 'lr_rate', params['lr_rate'], 'bs_size', params['batch_size'])
 print('sindyThreshold',params['sindy_threshold'], 'poly order', params['poly_order'], 'sind included: ', params['include_sine'])
 print('Auto encoder weight:', params['loss_weight_decoder'], 'Sindy x weight: ', params['loss_weight_sindy_x'], 'Sindy z weight: ', params['loss_weight_sindy_z'], 'Regularization weight: ', params['loss_weight_sindy_regularization'])
@@ -165,24 +164,18 @@ print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 torch.cuda.empty_cache()
 
 # read the train videos in random order
-file_names = []
-boolTake = False
-if takeEvenVideos == True:
-    video_nbr = 0                   # take even videos
-else:
-    video_nbr = 1                   # take odd videos
+file_names_tmp = []
 for f in listdir(path_train):
-    if takeAllVideos == True:
-        file_names.append(f)
-    else:               # take every second video --> train with 50GB GPU
-        boolTake = video_nbr % 2 == 0      # True, if all should be taken
-        video_nbr += 1
-        if boolTake:
-            file_names.append(f)        
+    file_names_tmp.append(f)  
 
-
-random.shuffle(file_names)
+random.shuffle(file_names_tmp)
+file_names = []
+if takeAllVideos == False:
+    file_names = file_names_tmp[0:int(len(file_names_tmp)*2/3)]
+else:
+    file_names = file_names_tmp
 print('readed file names: ', len(file_names))
+del file_names_tmp
 
 # define transform to tensor and resize to 1080x1920, 720x404 (16:9)
 # pictures are 16:9 --> 1080x1920, 900x1600, 720x1280, 576x1024, 540x960: 500k pixel, 360x640, 272x480
