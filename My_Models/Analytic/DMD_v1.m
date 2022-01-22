@@ -145,18 +145,7 @@ for iter = 1:until
 end
 X_dmd_pred = Phi * time_dynamics_pred;
 
-% if some values are < 0 or > 1
-if min(X_dmd_pred(:)) < 0 || max(X_dmd_pred(:)) > 1
-    for i = 1:size(X_dmd_pred,1)
-        for j = 1:size(X_dmd_pred,2)
-            if (X_dmd_pred(i,j)) < 0
-                X_dmd_pred(i,j) = 0;
-            elseif (X_dmd_pred(i,j)) > 1
-                X_dmd_pred(i,j) = 1;
-            end
-        end
-    end
-end
+X_dmd_pred = matrixToNorm(X_dmd_pred,0, 0.9);
 
 % recreate and make a prediction as a video
 videoOut = VideoWriter(strcat(path_figure, 'Video_predictionFactor3_r=190of200'),'Grayscale AVI')
