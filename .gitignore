@@ -15,6 +15,7 @@ My_Models/NeuralNetwork/share/
 My_Models/NeuralNetwork/pyvenv.cfg
 My_Models/NeuralNetwork/Autoencoder_NN/results/
 My_Models/NeuralNetwork/Autoencoder_NN/runs/
+My_Models/NeuralNetwork/Autoencoder_NN/log/
 My_Models/NeuralNetwork/Autoencoder_NN/.ipynb_checkpoints/
 
 # ignore folders in chapter book
